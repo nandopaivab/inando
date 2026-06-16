@@ -1,0 +1,15 @@
+{
+  "name": "inando-store-erp",
+  "version": "1.0.0",
+  "description": "iNando Store ERP backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test_endpoints.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}

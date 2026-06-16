@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iNando Store ERP - Gestão Integrada</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Authentication Panel (Login/2FA/Recovery) -->
+  <div id="auth-panel" class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span>iNando Store <span class="accent">ERP</span></span>
+        </div>
+        <p>Acesse o sistema administrativo</p>
+      </div>
+
+      <!-- Login Form View -->
+      <form id="login-form" class="auth-form active">
+        <div class="form-group">
+          <label for="login-email">E-mail</label>
+          <div class="input-wrapper">
+            <input type="email" id="login-email" required placeholder="exemplo@inando.com">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="label-row">
+            <label for="login-password">Senha</label>
+            <a href="#" id="btn-show-recovery" class="text-link">Esqueci a senha</a>
+          </div>
+          <div class="input-wrapper">
+            <input type="password" id="login-password" required placeholder="••••••••">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        <div class="auth-footer-info">
+          <p>Dica: Acesse com <strong>admin@inando.com</strong> / <strong>admin123</strong></p>
+        </div>
+      </form>
+
+      <!-- 2FA Form View (Simulated) -->
+      <form id="2fa-form" class="auth-form">
+        <div class="auth-icon-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h3>Autenticação em 2 Etapas</h3>
+        <p class="description">Digite o código de verificação enviado para o seu aplicativo autenticador.</p>
+        <div class="form-group">
+          <label for="2fa-code">Código de Segurança</label>
+          <input type="text" id="2fa-code" maxlength="6" pattern="[0-9]*" inputmode="numeric" required placeholder="Digite o código (123456 para testes)" autocomplete="one-time-code">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Verificar e Entrar</button>
+        <button type="button" id="btn-cancel-2fa" class="btn btn-ghost btn-block">Voltar para o login</button>
+      </form>
+
+      <!-- Recovery Form View -->
+      <form id="recovery-form" class="auth-form">
+        <h3>Recuperar Senha</h3>
+        <p class="description">Insira seu e-mail cadastrado para enviarmos as instruções de recuperação.</p>
+        <div class="form-group">
+          <label for="recovery-email">E-mail Corporativo</label>
+          <input type="email" id="recovery-email" required placeholder="seuemail@inandostore.com">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Enviar Instruções</button>
+        <button type="button" id="btn-cancel-recovery" class="btn btn-ghost btn-block">Voltar para o login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main System App Layout -->
+  <div id="app-layout" class="app-layout hidden">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span>iNando Store</span>
+        </div>
+        <span class="role-badge" id="sidebar-role-badge">Admin</span>
+      </div>
+
+      <!-- User Profile brief -->
+      <div class="sidebar-profile">
+        <div class="avatar" id="user-avatar-initials">FP</div>
+        <div class="profile-info">
+          <h4 id="user-display-name">Fernando Paiva</h4>
+          <p id="user-display-role">Administrador</p>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="nav-menu">
+        <a href="#dashboard" class="nav-item active" data-view="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#products" class="nav-item" data-view="products">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="12" y1="10" x2="12" y2="21"></line></svg>
+          <span>Produtos</span>
+        </a>
+        <a href="#stock" class="nav-item" data-view="stock">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></nav-item>
+          <span>Estoque</span>
+        </a>
+        <a href="#clients" class="nav-item" data-view="clients">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Clientes</span>
+        </a>
+        <a href="#sales" class="nav-item" data-view="sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          <span>Vendas (PDV)</span>
+        </a>
+        <a href="#finance" class="nav-item" data-view="finance">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Financeiro</span>
+        </a>
+        <a href="#reports" class="nav-item" data-view="reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Relatórios & BI</span>
+        </a>
+        <a href="#users" class="nav-item" data-view="users">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"></path><path d="M2 21a10 10 0 0 1 20 0z"></path></svg>
+          <span>Usuários</span>
+        </a>
+        <a href="#settings" class="nav-item" data-view="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Configurações</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <button id="btn-logout" class="btn btn-logout btn-block">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span>Sair do ERP</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Content Workspace -->
+    <div class="workspace">
+      <!-- Workspace Header -->
+      <header class="workspace-header">
+        <div class="header-left">
+          <h2 id="view-title">Dashboard</h2>
+          <p id="view-subtitle" class="text-muted">Visão geral administrativa do ERP</p>
+        </div>
+
+        <div class="header-right">
+          <!-- Notification Bell -->
+          <div class="notification-bell-wrapper">
+            <button id="btn-notification-bell" class="btn btn-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span id="notification-count" class="badge-dot hidden"></span>
+            </button>
+            <div id="notification-panel" class="notification-panel">
+              <div class="panel-header">
+                <h3>Notificações do Sistema</h3>
+                <button id="btn-clear-notifications" class="text-link">Limpar</button>
+              </div>
+              <div id="notification-list" class="panel-body">
+                <!-- Injected dynamically -->
+                <p class="empty-state">Nenhuma notificação pendente.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Theme Toggler -->
+          <button id="btn-theme-toggle" class="btn btn-icon" title="Alternar Tema">
+            <!-- Sun / Moon SVG icons -->
+            <svg id="theme-sun-icon" class="theme-icon hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg id="theme-moon-icon" class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Viewport Section -->
+      <main id="viewport" class="viewport-content">
+        <!-- Rendered view content goes here -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Global Modal Container -->
+  <div id="modal-container" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Título do Modal</h3>
+        <button id="btn-close-modal" class="btn btn-icon btn-close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="modal-body-content">
+        <!-- Dynamic content injected -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Thermal Print Receipt Template (Print CSS only triggers on class) -->
+  <div id="thermal-receipt" class="thermal-receipt">
+    <!-- Receipt rendering for printing -->
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/products.js"></script>
+  <script src="js/views/stock.js"></script>
+  <script src="js/views/clients.js"></script>
+  <script src="js/views/sales.js"></script>
+  <script src="js/views/finance.js"></script>
+  <script src="js/views/reports.js"></script>
+  <script src="js/views/users.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
