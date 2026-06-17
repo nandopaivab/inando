@@ -132,12 +132,10 @@ window.views.users = {
           <input type="email" id="usr-email" required placeholder="email@inandostore.com" value="${u ? u.email : ''}" ${isEdit ? 'disabled' : ''}>
         </div>
 
-        ${!isEdit ? `
-          <div class="form-group">
-            <label for="usr-pw">Senha Temporária *</label>
-            <input type="password" id="usr-pw" required placeholder="Mínimo 6 caracteres">
-          </div>
-        ` : ''}
+        <div class="form-group">
+          <label for="usr-pw">${isEdit ? 'Nova Senha (deixe em branco para manter)' : 'Senha Temporária *'}</label>
+          <input type="password" id="usr-pw" ${isEdit ? '' : 'required'} placeholder="Mínimo 6 caracteres">
+        </div>
 
         <div class="form-grid-3">
           <div class="form-group">
@@ -197,6 +195,8 @@ window.views.users = {
             is_active: parseInt(document.getElementById('usr-active').value),
             two_factor_enabled: parseInt(document.getElementById('usr-2fa').value)
           };
+          const pwVal = document.getElementById('usr-pw').value;
+          if (pwVal) payload.password = pwVal;
           await window.api.users.update(userId, payload);
           window.app.showToast('Usuário atualizado com sucesso!', 'success');
         } else {

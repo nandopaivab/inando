@@ -267,6 +267,13 @@ const api = {
       return await api.request(`/users/${id}`, {
         method: 'DELETE'
       });
+    },
+
+    async changePassword(current_password, new_password) {
+      return await api.request('/users/change-password', {
+        method: 'PUT',
+        body: { current_password, new_password }
+      });
     }
   },
 

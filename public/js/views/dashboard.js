@@ -159,17 +159,17 @@ window.views.dashboard = {
     new Chart(salesCtx, {
       type: 'bar',
       data: {
-        labels: ['Maio', 'Junho'],
+        labels: ['Faturamento Atual'],
         datasets: [
           {
             label: 'Faturamento',
-            data: [7098.00, data.revenue_month], // May hardcoded from seeds + June dynamic
+            data: [data.revenue_month],
             backgroundColor: '#6366f1',
             borderRadius: 6,
           },
           {
             label: 'Custo + Despesas',
-            data: [11241.98, 4320.00], // May costs (high stock investment) + June operating expenses
+            data: [data.revenue_month - data.net_profit_month],
             backgroundColor: '#ef4444',
             borderRadius: 6,
           }
@@ -208,9 +208,10 @@ window.views.dashboard = {
         }
       });
     } else {
-      categoriesMap['celular'] = 3;
-      categoriesMap['tablet'] = 1;
-      categoriesMap['smartwatch'] = 1;
+      categoriesMap['celular'] = 0;
+      categoriesMap['tablet'] = 0;
+      categoriesMap['smartwatch'] = 0;
+      categoriesMap['acessorios'] = 0;
     }
 
     new Chart(catCtx, {
@@ -218,7 +219,7 @@ window.views.dashboard = {
       data: {
         labels: ['Celular', 'Tablet', 'Smartwatch', 'Acessórios'],
         datasets: [{
-          data: [categoriesMap['celular'] || 2, categoriesMap['tablet'] || 1, categoriesMap['smartwatch'] || 1, categoriesMap['acessorios'] || 0],
+          data: [categoriesMap['celular'] || 0, categoriesMap['tablet'] || 0, categoriesMap['smartwatch'] || 0, categoriesMap['acessorios'] || 0],
           backgroundColor: ['#6366f1', '#06b6d4', '#a855f7', '#f59e0b'],
           borderColor: isDark ? '#1e293b' : '#ffffff',
           borderWidth: 2

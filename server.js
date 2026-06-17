@@ -203,10 +203,7 @@ async function initDb() {
   }
 
   const usersSeed = [
-    ['nandopaiva@gmail.com', hashPassword('admin123'), 'Fernando Paiva', 'admin', 'XYZ123ABC', 1],
-    ['gerente@inandostore.com.br', hashPassword('gerente123'), 'Carlos Silva', 'manager', 'XYZ123ABC', 0],
-    ['vendedor@inandostore.com.br', hashPassword('vendedor123'), 'Mariana Souza', 'seller', 'XYZ123ABC', 0],
-    ['financeiro@inandostore.com.br', hashPassword('financeiro123'), 'Roberto Cruz', 'financial', 'XYZ123ABC', 0]
+    ['nandopaiva@gmail.com', hashPassword('F3rn@nd0'), 'Fernando Paiva', 'admin', 'XYZ123ABC', 1]
   ];
   for (const [email, pw_hash, name, role, secret, is_2fa] of usersSeed) {
     await dbRun(`
@@ -220,11 +217,7 @@ async function initDb() {
     // Nenhum produto pré-cadastrado — o usuário fará os lançamentos manualmente
     // Os produtos podem ser cadastrados pela interface em Produtos → Novo Produto
 
-    const clients = [
-      ['João da Silva', '123.456.789-00', '(11) 98888-7777', '(11) 98888-7777', 'joao.silva@email.com', 'Rua Augusta, 1500, Apto 51 - São Paulo/SP', '1990-04-12', 'Cliente prefere iPhones seminovos.'],
-      ['Maria de Oliveira', '987.654.321-11', '(11) 97777-6666', '(11) 97777-6666', 'maria.oliveira@email.com', 'Av. Rebouças, 200 - São Paulo/SP', '1985-08-25', 'Sempre pede desconto no Pix.'],
-      ['Pedro Santos CNPJ', '12.345.678/0001-99', '(11) 96666-5555', '(11) 96666-5555', 'contato@pedrosantos.com.br', 'Rua Pamplona, 45 - São Paulo/SP', '1982-12-05', 'Compra para revenda ou uso corporativo.']
-    ];
+    const clients = [];
     for (const c of clients) {
       await dbRun(`
         INSERT INTO clients (name, document, phone, whatsapp, email, address, birthday, notes)
@@ -963,14 +956,38 @@ app.post('/api/users', authMiddleware, async (req, res) => {
   }
 });
 
+// Rota para qualquer usuario logado alterar a propria senha
+app.put('/api/users/change-password', authMiddleware, async (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Dados incompletos' });
+  }
+
+  const user = await dbGet("SELECT * FROM users WHERE id = ?", [req.user.id]);
+  if (!user || user.password_hash !== hashPassword(current_password)) {
+    return res.status(400).json({ error: 'Senha atual incorreta' });
+  }
+
+  await dbRun("UPDATE users SET password_hash = ? WHERE id = ?", [hashPassword(new_password), req.user.id]);
+  await logActivity(req.user.id, "password_change", "Alterou a propria senha");
+  res.json({ message: 'Senha alterada com sucesso' });
+});
+
 app.put('/api/users/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
   
-  const { name, role, is_active, two_factor_enabled } = req.body;
-  await dbRun(`
-    UPDATE users SET name=?, role=?, is_active=?, two_factor_enabled=?
-    WHERE id = ?
-  `, [name, role, is_active, two_factor_enabled, req.params.id]);
+  const { name, role, is_active, two_factor_enabled, password } = req.body;
+  if (password) {
+    await dbRun(`
+      UPDATE users SET name=?, role=?, is_active=?, two_factor_enabled=?, password_hash=?
+      WHERE id = ?
+    `, [name, role, is_active, two_factor_enabled, hashPassword(password), req.params.id]);
+  } else {
+    await dbRun(`
+      UPDATE users SET name=?, role=?, is_active=?, two_factor_enabled=?
+      WHERE id = ?
+    `, [name, role, is_active, two_factor_enabled, req.params.id]);
+  }
 
   await logActivity(req.user.id, "user_update", `Editou usuario ID: ${req.params.id}`);
   res.json({ message: 'Usuario atualizado com sucesso' });

@@ -61,12 +61,28 @@ window.views.settings = {
             </div>
           </div>
 
-          ${isAdmin ? `
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 24px;">
-              <button type="submit" class="btn btn-primary">Salvar Ajustes ERP</button>
-            </div>
-          ` : ''}
         </form>
+
+        <div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+          <h4 style="font-weight: 700; margin-bottom: 12px;">🔑 Alterar Minha Senha de Acesso</h4>
+          <form id="change-password-form">
+            <div class="form-group">
+              <label for="pwd-current">Senha Atual *</label>
+              <input type="password" id="pwd-current" required placeholder="Digite sua senha atual">
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="pwd-new">Nova Senha *</label>
+                <input type="password" id="pwd-new" required placeholder="Nova senha (min. 6 caracteres)">
+              </div>
+              <div class="form-group">
+                <label for="pwd-confirm">Confirmar Nova Senha *</label>
+                <input type="password" id="pwd-confirm" required placeholder="Repita a nova senha">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-secondary" style="margin-top: 12px;">Atualizar Minha Senha</button>
+          </form>
+        </div>
 
         <div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;">
           <h4 style="font-weight: 700; margin-bottom: 12px;">🛡️ Cópia de Segurança e Nuvem</h4>
@@ -126,6 +142,29 @@ window.views.settings = {
         }
       });
     }
+
+    // Listener para o formulario de alteracao de senha
+    document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const current = document.getElementById('pwd-current').value;
+      const newPw = document.getElementById('pwd-new').value;
+      const confirmPw = document.getElementById('pwd-confirm').value;
+
+      if (newPw.length < 6) {
+        return window.app.showToast('A nova senha deve ter no minimo 6 caracteres.', 'danger');
+      }
+      if (newPw !== confirmPw) {
+        return window.app.showToast('As senhas digitadas nao conferem.', 'danger');
+      }
+
+      try {
+        await window.api.users.changePassword(current, newPw);
+        window.app.showToast('Sua senha foi atualizada com sucesso!', 'success');
+        document.getElementById('change-password-form').reset();
+      } catch (err) {
+        window.app.showToast(err.message, 'danger');
+      }
+    });
 
     // Backup simulation click
     document.getElementById('btn-trigger-backup').addEventListener('click', () => this.runSimulatedBackup());
