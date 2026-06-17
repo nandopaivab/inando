@@ -783,6 +783,21 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
   const discVal = parseFloat(discount || 0.0);
   const total = Math.max(0, subtotal - discVal);
 
+  if (payment_method === 'Misto') {
+    if (!req.body.mixed_payments) {
+      return res.status(400).json({ error: 'Detalhamento do pagamento misto não enviado' });
+    }
+    const mix = req.body.mixed_payments;
+    const cashVal = parseFloat(mix.dinheiro || 0.0);
+    const pixVal = parseFloat(mix.pix || 0.0);
+    const debVal = parseFloat(mix.debito || 0.0);
+    const credVal = parseFloat(mix.credito || 0.0);
+    const mixTotal = cashVal + pixVal + debVal + credVal;
+    if (Math.abs(mixTotal - total) > 0.02) {
+      return res.status(400).json({ error: `A soma dos valores (R$ ${mixTotal.toFixed(2)}) não confere com o total da venda (R$ ${total.toFixed(2)})` });
+    }
+  }
+
   // Insert sale
   await dbRun(`
     INSERT INTO sales (client_id, user_id, subtotal, discount, total, payment_method, installments, status)
@@ -810,7 +825,33 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
 
   // Finance Transactions
   const todayStr = new Date().toISOString().slice(0, 10);
-  if (payment_method === 'Credito' && installments > 1) {
+  if (payment_method === 'Misto' && req.body.mixed_payments) {
+    const mix = req.body.mixed_payments;
+    if (mix.dinheiro > 0) {
+      await dbRun(`
+        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+      `, [mix.dinheiro, `Recebimento Misto (Dinheiro) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+    }
+    if (mix.pix > 0) {
+      await dbRun(`
+        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+      `, [mix.pix, `Recebimento Misto (Pix) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+    }
+    if (mix.debito > 0) {
+      await dbRun(`
+        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+      `, [mix.debito, `Recebimento Misto (Débito) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+    }
+    if (mix.credito > 0) {
+      await dbRun(`
+        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+      `, [mix.credito, `Recebimento Misto (Crédito) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+    }
+  } else if (payment_method === 'Credito' && installments > 1) {
     const valInst = total / installments;
     for (let i = 1; i <= installments; i++) {
       const due = new Date(Date.now() + 30 * i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

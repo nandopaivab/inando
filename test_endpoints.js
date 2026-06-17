@@ -132,6 +132,18 @@ async function runTests() {
     const prodId = r6.body.id;
     console.log(`     Produto criado ID: ${prodId}`);
 
+    const newProd2 = {
+      brand: 'Apple', model: 'iPhone 16 Pro Max 256GB TESTE 2',
+      category: 'celular', state: 'novo', color: 'Titânio',
+      capacity: '256GB', ram: '8GB', imei_1: '359111222333888',
+      supplier: 'Dist. Teste', purchase_date: '2026-06-17',
+      purchase_price: 7500.0, selling_price: 9999.0, commission_percent: 2.5
+    };
+    const r6b = await request('POST', '/products', newProd2, token);
+    assert(r6b.status === 201, `Status 201 para segundo produto`);
+    const prodId2 = r6b.body.id;
+    console.log(`     Segundo produto criado ID: ${prodId2}`);
+
     // ── 7. Clientes ─────────────────────────────────────────────────────────
     console.log('\n👥 Teste 7: GET /api/clients');
     const r7 = await request('GET', '/clients', null, token);
@@ -161,6 +173,32 @@ async function runTests() {
     assert(r9.body.total === 9999.0, `Total R$ 9999.00 ✓`);
     const saleId = r9.body.sale_id;
     console.log(`     Venda ID: ${saleId} | Total: R$ ${r9.body.total}`);
+
+    // ── 9b. Venda Mista com soma inválida ───────────────────────────────────
+    console.log('\n💰 Teste 9b: POST /api/sales (PDV Misto Falha)');
+    const r9b = await request('POST', '/sales', {
+      client_id: cliId,
+      product_ids: [prodId2],
+      discount: 0,
+      payment_method: 'Misto',
+      mixed_payments: { dinheiro: 1000, pix: 2000, debito: 0, credito: 0 },
+      installments: 1
+    }, token);
+    assert(r9b.status === 400, 'Status 400 por soma inválida');
+
+    // ── 9c. Venda Mista com sucesso ─────────────────────────────────────────
+    console.log('\n💰 Teste 9c: POST /api/sales (PDV Misto Sucesso)');
+    const r9c = await request('POST', '/sales', {
+      client_id: cliId,
+      product_ids: [prodId2],
+      discount: 0,
+      payment_method: 'Misto',
+      mixed_payments: { dinheiro: 4999.0, pix: 5000.0, debito: 0, credito: 0 },
+      installments: 1
+    }, token);
+    assert(r9c.status === 201, 'Status 201');
+    assert(r9c.body.total === 9999.0, 'Total R$ 9999.00 ✓');
+    console.log(`     Venda Mista ID: ${r9c.body.sale_id} | Total: R$ ${r9c.body.total}`);
 
     // ── 10. Recibo da venda ─────────────────────────────────────────────────
     console.log('\n🧾 Teste 10: GET /api/sales/:id (recibo)');

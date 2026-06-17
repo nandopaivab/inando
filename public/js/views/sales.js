@@ -84,6 +84,7 @@ window.views.sales = {
                 <option value="Credito">Cartão de Crédito</option>
                 <option value="Boleto">Boleto Bancário</option>
                 <option value="Transferencia">Doc/Ted Bancário</option>
+                <option value="Misto">Misto (Múltiplas Formas)</option>
               </select>
             </div>
 
@@ -305,9 +306,106 @@ window.views.sales = {
     // If Pix, show simulated Pix QR Code checkout modal first
     if (payMethod === 'PIX') {
       this.showPixModal(payload);
+    } else if (payMethod === 'Misto') {
+      this.showMixedPaymentModal(payload);
     } else {
       this.executeCheckout(payload);
     }
+  },
+
+  showMixedPaymentModal(payload) {
+    const subtotal = this.cart.reduce((sum, item) => sum + item.selling_price, 0);
+    const total = Math.max(0, subtotal - payload.discount);
+
+    const content = `
+      <form id="mixed-pay-form">
+        <p style="margin-bottom: 16px; text-align: center;">Preencha os valores para cada meio de pagamento. O total deve somar exatamente <strong>R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.</p>
+        
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Dinheiro Físico (R$)</label>
+            <input type="number" id="mix-cash" step="0.01" min="0" value="0.00">
+          </div>
+          <div class="form-group">
+            <label>Pix (R$)</label>
+            <input type="number" id="mix-pix" step="0.01" min="0" value="0.00">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Cartão de Débito (R$)</label>
+            <input type="number" id="mix-deb" step="0.01" min="0" value="0.00">
+          </div>
+          <div class="form-group">
+            <label>Cartão de Crédito (R$)</label>
+            <input type="number" id="mix-cred" step="0.01" min="0" value="0.00">
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 14px; text-align: center; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <div>Restante: <span id="mix-remaining" style="font-weight: 700; color: var(--danger);">R$ ${total.toFixed(2)}</span></div>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-confirm-mix" disabled>Confirmar Venda Mista</button>
+        </div>
+      </form>
+    `;
+
+    window.app.showModal('Pagamento Múltiplo (Misto)', content);
+
+    const inputs = ['mix-cash', 'mix-pix', 'mix-deb', 'mix-cred'];
+    const confirmBtn = document.getElementById('btn-confirm-mix');
+    const remainingSpan = document.getElementById('mix-remaining');
+
+    const recalculateMixed = () => {
+      let currentSum = 0;
+      inputs.forEach(id => {
+        currentSum += parseFloat(document.getElementById(id).value) || 0;
+      });
+      const diff = total - currentSum;
+      if (Math.abs(diff) < 0.01) {
+        remainingSpan.textContent = 'R$ 0,00 (Valor Completo ✓)';
+        remainingSpan.style.color = 'var(--success)';
+        confirmBtn.disabled = false;
+      } else {
+        remainingSpan.textContent = `R$ ${diff.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        remainingSpan.style.color = diff > 0 ? 'var(--warning)' : 'var(--danger)';
+        confirmBtn.disabled = true;
+      }
+    };
+
+    inputs.forEach(id => {
+      document.getElementById(id).addEventListener('input', recalculateMixed);
+    });
+
+    document.getElementById('mixed-pay-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const cashVal = parseFloat(document.getElementById('mix-cash').value) || 0;
+      const pixVal = parseFloat(document.getElementById('mix-pix').value) || 0;
+      const debVal = parseFloat(document.getElementById('mix-deb').value) || 0;
+      const credVal = parseFloat(document.getElementById('mix-cred').value) || 0;
+
+      const methodsArray = [];
+      if (cashVal > 0) methodsArray.push(`Dinheiro: R$${cashVal.toFixed(2)}`);
+      if (pixVal > 0) methodsArray.push(`Pix: R$${pixVal.toFixed(2)}`);
+      if (debVal > 0) methodsArray.push(`Débito: R$${debVal.toFixed(2)}`);
+      if (credVal > 0) methodsArray.push(`Crédito: R$${credVal.toFixed(2)}`);
+
+      payload.payment_method = 'Misto';
+      payload.mixed_payments = {
+        dinheiro: cashVal,
+        pix: pixVal,
+        debito: debVal,
+        credito: credVal
+      };
+
+      window.app.closeModal();
+      this.executeCheckout(payload);
+    });
   },
 
   showPixModal(payload) {
