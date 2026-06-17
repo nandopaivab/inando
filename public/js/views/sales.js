@@ -45,18 +45,6 @@ window.views.sales = {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top: 10px; color: var(--text-secondary);"><path d="M3 5v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path><path d="M7 9h10M7 12h10M7 15h10"></path></svg>
               <input type="text" id="pos-scan-input" placeholder="Simular leitor: Digite IMEI, Serial ou código de barras e tecle Enter...">
             </div>
-            
-            <div style="margin-top: 12px;">
-              <label style="font-size: 11px; color: var(--text-muted);">Busca manual por catálogo</label>
-              <div style="display: flex; gap: 8px; margin-top: 4px;">
-                <select id="pos-manual-select" style="flex: 1; margin: 0;">
-                  <option value="">Selecione um aparelho disponível...</option>
-                </select>
-                <button type="button" class="btn btn-primary" id="btn-add-manual-cart" style="padding: 0 16px; font-weight: 600; display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer;">
-                  ➕ Adicionar
-                </button>
-              </div>
-            </div>
           </div>
 
           <!-- Cart Header with Clear Cart button -->
@@ -119,6 +107,75 @@ window.views.sales = {
               <label for="pos-discount">Desconto (R$)</label>
               <input type="number" id="pos-discount" min="0" step="0.01" value="0.00">
             </div>
+
+            <div class="form-group" style="margin-top: 16px; display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="pos-trade-in-toggle" style="width: auto; margin: 0; cursor: pointer;">
+              <label for="pos-trade-in-toggle" style="margin: 0; cursor: pointer; font-weight: 600; font-size: 13px;">Receber aparelho como parte do pagamento</label>
+            </div>
+
+            <div id="pos-trade-in-container" class="hidden" style="border: 1px solid var(--border-color); padding: 12px; border-radius: var(--border-radius-md); background: rgba(255, 255, 255, 0.02); margin-top: 12px; margin-bottom: 16px;">
+              <h4 style="font-weight: 700; margin-bottom: 12px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">Dados do Aparelho de Troca</h4>
+              
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="trade-brand">Marca *</label>
+                  <input type="text" id="trade-brand" placeholder="Ex: Apple" value="Apple">
+                </div>
+                <div class="form-group">
+                  <label for="trade-model">Modelo *</label>
+                  <input type="text" id="trade-model" placeholder="Ex: iPhone 13 Pro">
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="trade-color">Cor</label>
+                  <input type="text" id="trade-color" placeholder="Ex: Azul Sierra">
+                </div>
+                <div class="form-group">
+                  <label for="trade-capacity">Capacidade</label>
+                  <input type="text" id="trade-capacity" placeholder="Ex: 128 GB">
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="trade-ram">RAM</label>
+                  <input type="text" id="trade-ram" placeholder="Ex: 6 GB">
+                </div>
+                <div class="form-group">
+                  <label for="trade-state">Estado *</label>
+                  <select id="trade-state">
+                    <option value="novo">Novo</option>
+                    <option value="seminovo">Seminovo</option>
+                    <option value="usado" selected>Usado</option>
+                    <option value="recondicionado">Recondicionado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="trade-imei1">IMEI 1</label>
+                  <input type="text" id="trade-imei1" placeholder="Ex: 35...">
+                </div>
+                <div class="form-group">
+                  <label for="trade-imei2">IMEI 2</label>
+                  <input type="text" id="trade-imei2" placeholder="Ex: 35...">
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="trade-serial">Nº de Série</label>
+                  <input type="text" id="trade-serial" placeholder="Ex: DX...">
+                </div>
+                <div class="form-group">
+                  <label for="trade-valuation">Valor Avaliado *</label>
+                  <input type="number" id="trade-valuation" min="0" step="0.01" value="0.00">
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -131,8 +188,16 @@ window.views.sales = {
                 <span>Desconto</span>
                 <span id="summary-discount" class="text-danger">R$ 0,00</span>
               </div>
+              <div class="summary-row" id="summary-sale-total-row">
+                <span>Total da Venda</span>
+                <span id="summary-sale-total">R$ 0,00</span>
+              </div>
+              <div class="summary-row hidden" id="summary-trade-in-row">
+                <span>Abatimento Troca</span>
+                <span id="summary-trade-in" class="text-success">R$ 0,00</span>
+              </div>
               <div class="summary-row total">
-                <span>Total Final</span>
+                <span id="summary-total-label">Total Final</span>
                 <span id="summary-total">R$ 0,00</span>
               </div>
             </div>
@@ -150,10 +215,7 @@ window.views.sales = {
       this.availableProducts = await window.api.products.list({ status: 'disponivel' });
       this.clients = await window.api.clients.list();
       
-      // Populate Manual catalog select
-      const manualSelect = document.getElementById('pos-manual-select');
-      manualSelect.innerHTML = `<option value="">Selecione um aparelho disponível...</option>` + 
-        this.availableProducts.map(p => `<option value="${p.id}">${p.brand} ${p.model} (${p.color || ''} - ${p.capacity || ''}) - R$ ${p.selling_price.toLocaleString('pt-BR')}</option>`).join('');
+      // Manual select removed
 
       // Populate Client select
       const clientSelect = document.getElementById('pos-client-select');
@@ -202,24 +264,29 @@ window.views.sales = {
       }
     });
 
-    // Manual add button listener
-    document.getElementById('btn-add-manual-cart').addEventListener('click', () => {
-      const id = parseInt(manualSelect.value);
-      if (!id) {
-        window.app.showToast('Por favor, selecione um aparelho no catálogo!', 'warning');
-        return;
-      }
-      const p = this.availableProducts.find(prod => Number(prod.id) === Number(id));
-      if (p) {
-        this.addToCart(p);
-        manualSelect.value = '';
-        window.app.showToast(`Adicionado: ${p.brand} ${p.model}`, 'success');
-      }
-    });
+    // Manual select listener removed
 
     // Discount watcher
     const discInput = document.getElementById('pos-discount');
     discInput.addEventListener('input', () => this.updateTotals());
+
+    // Trade-in watchers
+    const tradeInToggle = document.getElementById('pos-trade-in-toggle');
+    const tradeInContainer = document.getElementById('pos-trade-in-container');
+    const tradeValuationInput = document.getElementById('trade-valuation');
+
+    tradeInToggle.addEventListener('change', () => {
+      if (tradeInToggle.checked) {
+        tradeInContainer.classList.remove('hidden');
+      } else {
+        tradeInContainer.classList.add('hidden');
+      }
+      this.updateTotals();
+    });
+
+    tradeValuationInput.addEventListener('input', () => {
+      this.updateTotals();
+    });
 
     // CRM Quick button
     document.getElementById('btn-pos-add-client').addEventListener('click', () => {
@@ -310,11 +377,36 @@ window.views.sales = {
   updateTotals() {
     const subtotal = this.cart.reduce((sum, item) => sum + item.selling_price, 0);
     const disc = parseFloat(document.getElementById('pos-discount').value) || 0;
-    const total = Math.max(0, subtotal - disc);
+    const saleTotal = Math.max(0, subtotal - disc);
 
     document.getElementById('summary-subtotal').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     document.getElementById('summary-discount').textContent = `- R$ ${disc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    document.getElementById('summary-total').textContent = `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('summary-sale-total').textContent = `R$ ${saleTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+    const tradeInToggle = document.getElementById('pos-trade-in-toggle');
+    const isTradeIn = tradeInToggle && tradeInToggle.checked;
+    const tradeInValInput = document.getElementById('trade-valuation');
+    const tradeInVal = isTradeIn && tradeInValInput ? parseFloat(tradeInValInput.value) || 0 : 0;
+
+    const tradeInRow = document.getElementById('summary-trade-in-row');
+    const saleTotalRow = document.getElementById('summary-sale-total-row');
+    const totalLabel = document.getElementById('summary-total-label');
+    const totalSpan = document.getElementById('summary-total');
+
+    if (isTradeIn) {
+      if (tradeInRow) tradeInRow.classList.remove('hidden');
+      if (saleTotalRow) saleTotalRow.classList.remove('hidden');
+      const tradeInTextSpan = document.getElementById('summary-trade-in');
+      if (tradeInTextSpan) tradeInTextSpan.textContent = `- R$ ${tradeInVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      if (totalLabel) totalLabel.textContent = 'Diferença a Pagar';
+      const difference = Math.max(0, saleTotal - tradeInVal);
+      if (totalSpan) totalSpan.textContent = `R$ ${difference.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    } else {
+      if (tradeInRow) tradeInRow.classList.add('hidden');
+      if (saleTotalRow) saleTotalRow.classList.add('hidden');
+      if (totalLabel) totalLabel.textContent = 'Total Final';
+      if (totalSpan) totalSpan.textContent = `R$ ${saleTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    }
   },
 
   async checkout() {
@@ -337,6 +429,39 @@ window.views.sales = {
         installments: inst
       };
 
+      const tradeInToggle = document.getElementById('pos-trade-in-toggle');
+      if (tradeInToggle && tradeInToggle.checked) {
+        const brand = document.getElementById('trade-brand').value.trim();
+        const model = document.getElementById('trade-model').value.trim();
+        const valuation = parseFloat(document.getElementById('trade-valuation').value) || 0;
+        
+        if (!brand) {
+          window.app.showToast('Por favor, informe a marca do aparelho de troca.', 'warning');
+          return;
+        }
+        if (!model) {
+          window.app.showToast('Por favor, informe o modelo do aparelho de troca.', 'warning');
+          return;
+        }
+        if (valuation <= 0) {
+          window.app.showToast('Por favor, informe um valor de avaliação maior que zero.', 'warning');
+          return;
+        }
+
+        payload.trade_in = {
+          brand,
+          model,
+          color: document.getElementById('trade-color').value.trim() || 'Preto',
+          capacity: document.getElementById('trade-capacity').value.trim() || '128 GB',
+          ram: document.getElementById('trade-ram').value.trim() || '8 GB',
+          state: document.getElementById('trade-state').value,
+          imei_1: document.getElementById('trade-imei1').value.trim() || null,
+          imei_2: document.getElementById('trade-imei2').value.trim() || null,
+          serial_number: document.getElementById('trade-serial').value.trim() || null,
+          valuation_value: valuation
+        };
+      }
+
       // If Pix, show simulated Pix QR Code checkout modal first
       if (payMethod === 'PIX') {
         this.showPixModal(payload);
@@ -353,11 +478,19 @@ window.views.sales = {
 
   showMixedPaymentModal(payload) {
     const subtotal = this.cart.reduce((sum, item) => sum + item.selling_price, 0);
-    const total = Math.max(0, subtotal - payload.discount);
+    const tradeInVal = payload.trade_in ? parseFloat(payload.trade_in.valuation_value || 0) : 0;
+    const total = Math.max(0, subtotal - payload.discount - tradeInVal);
 
     const content = `
       <form id="mixed-pay-form">
         <p style="margin-bottom: 16px; text-align: center;">Preencha os valores para cada meio de pagamento. O total deve somar exatamente <strong>R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.</p>
+        
+        ${payload.trade_in ? `
+        <div style="margin-bottom: 16px; padding: 10px; border-radius: 6px; background: rgba(22, 163, 74, 0.1); border: 1px solid rgba(22, 163, 74, 0.2); font-size: 12px; text-align: center;">
+          <strong>🔄 Aparelho na Troca Recebido:</strong> ${payload.trade_in.brand} ${payload.trade_in.model} (${payload.trade_in.capacity})<br>
+          <span style="color: var(--success); font-weight: bold;">Abatimento: - R$ ${payload.trade_in.valuation_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        </div>
+        ` : ''}
         
         <div class="form-grid-2">
           <div class="form-group">
@@ -448,7 +581,8 @@ window.views.sales = {
 
   showPixModal(payload) {
     const subtotal = this.cart.reduce((sum, item) => sum + item.selling_price, 0);
-    const total = Math.max(0, subtotal - payload.discount);
+    const tradeInVal = payload.trade_in ? parseFloat(payload.trade_in.valuation_value || 0) : 0;
+    const total = Math.max(0, subtotal - payload.discount - tradeInVal);
 
     const content = `
       <div style="text-align: center;">
@@ -459,6 +593,12 @@ window.views.sales = {
           <div style="text-align: center; margin-top: 8px;">
             <h4 style="font-weight:700;">Recebimento iNando Store</h4>
             <p class="text-success font-semibold" style="font-size: 16px; margin-top: 4px;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            ${payload.trade_in ? `
+            <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 6px;">
+              <strong>🔄 Aparelho na Troca:</strong><br>
+              ${payload.trade_in.brand} ${payload.trade_in.model} (-R$ ${payload.trade_in.valuation_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+            </div>
+            ` : ''}
           </div>
         </div>
         
@@ -523,6 +663,27 @@ window.views.sales = {
       // Clean Cart
       this.cart = [];
       this.renderCart();
+      
+      // Reset trade-in fields
+      const tradeInToggle = document.getElementById('pos-trade-in-toggle');
+      if (tradeInToggle) {
+        tradeInToggle.checked = false;
+        const tradeInContainer = document.getElementById('pos-trade-in-container');
+        if (tradeInContainer) tradeInContainer.classList.add('hidden');
+        
+        // Reset form inputs
+        document.getElementById('trade-brand').value = 'Apple';
+        document.getElementById('trade-model').value = '';
+        document.getElementById('trade-color').value = '';
+        document.getElementById('trade-capacity').value = '';
+        document.getElementById('trade-ram').value = '';
+        document.getElementById('trade-state').value = 'usado';
+        document.getElementById('trade-imei1').value = '';
+        document.getElementById('trade-imei2').value = '';
+        document.getElementById('trade-serial').value = '';
+        document.getElementById('trade-valuation').value = '0.00';
+      }
+
       this.updateTotals();
       document.getElementById('pos-discount').value = '0.00';
 
@@ -589,13 +750,26 @@ window.views.sales = {
               <span>Desconto:</span>
               <span>- R$ ${sale.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
+            ${details.trade_in ? `
+            <div style="display:flex; justify-content:space-between; color: var(--success);">
+              <span>Abatimento Troca:</span>
+              <span>- R$ ${details.trade_in.purchase_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            ` : ''}
             <div style="display:flex; justify-content:space-between; font-weight:800; font-size:15px; border-top: 1px solid var(--border-color); padding-top: 6px; margin-top: 4px;">
-              <span>TOTAL FINAL:</span>
-              <span class="text-success">R$ ${sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>${details.trade_in ? 'DIFERENÇA PAGA:' : 'TOTAL FINAL:'}</span>
+              <span class="text-success">R$ ${(sale.total - (details.trade_in ? details.trade_in.purchase_price : 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style="margin-top: 6px; font-size:11px; color: var(--text-secondary);">
               Forma de pagamento: <strong>${sale.payment_method}</strong> ${sale.installments > 1 ? `(${sale.installments}x)` : ''}
             </div>
+            ${details.trade_in ? `
+            <div style="display:flex; flex-direction:column; border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 8px; font-size: 11px; color: var(--text-secondary);">
+              <strong>Aparelho Recebido (Troca):</strong>
+              <div>${details.trade_in.brand} ${details.trade_in.model} (${details.trade_in.capacity || ''})</div>
+              <div>IMEI/Serial: ${details.trade_in.imei_1 || details.trade_in.serial_number || 'N/A'}</div>
+            </div>
+            ` : ''}
           </div>
         </div>
 
@@ -614,11 +788,10 @@ window.views.sales = {
   },
 
   printThermalReceipt(saleId) {
-    // Fill the thermal receipt print area
-    const details = this.availableProducts; // Fallback or reload.
     window.api.sales.getReceipt(saleId).then(res => {
       const sale = res.sale;
       const items = res.items;
+      const tradeIn = res.trade_in;
 
       const thermalArea = document.getElementById('thermal-receipt');
       thermalArea.innerHTML = `
@@ -666,9 +839,18 @@ window.views.sales = {
           <span>Desconto:</span>
           <span>- R$ ${sale.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
+        ${tradeIn ? `
+        <div class="receipt-row" style="color: green;">
+          <span>Abatimento Troca:</span>
+          <span>- R$ ${tradeIn.purchase_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        </div>
+        <div style="font-size: 9px; color: #555; padding-left: 10px; margin-bottom: 4px;">
+          Troca: ${tradeIn.brand} ${tradeIn.model} (${tradeIn.capacity || ''}) - IMEI/Serial: ${tradeIn.imei_1 || tradeIn.serial_number || 'N/A'}
+        </div>
+        ` : ''}
         <div class="receipt-row" style="font-weight:bold;">
-          <span>TOTAL FINAL:</span>
-          <span>R$ ${sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          <span>${tradeIn ? 'DIFERENÇA PAGA:' : 'TOTAL FINAL:'}</span>
+          <span>R$ ${(sale.total - (tradeIn ? tradeIn.purchase_price : 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         <p style="margin-top: 4px; font-size:10px;">Pagamento: ${sale.payment_method} ${sale.installments > 1 ? `(${sale.installments}x)` : ''}</p>
         
@@ -687,6 +869,7 @@ window.views.sales = {
     window.api.sales.getReceipt(saleId).then(res => {
       const sale = res.sale;
       const items = res.items;
+      const tradeIn = res.trade_in;
       
       let msg = `*iNando Store - Comprovante de Compra*\n`;
       msg += `Cupom: #${sale.id}\n`;
@@ -697,10 +880,21 @@ window.views.sales = {
         msg += `Identificador: ${item.imei_1 || item.serial_number || 'Sem IMEI'}\n`;
         msg += `Valor: R$ ${item.selling_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       });
+      if (tradeIn) {
+        msg += `-----------------------------\n`;
+        msg += `*Aparelho Recebido (Troca)*\n`;
+        msg += `${tradeIn.brand} ${tradeIn.model} (${tradeIn.capacity || ''})\n`;
+        msg += `Identificador: ${tradeIn.imei_1 || tradeIn.serial_number || 'N/A'}\n`;
+        msg += `Valor Avaliado: R$ ${tradeIn.purchase_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      }
       msg += `-----------------------------\n`;
       msg += `Subtotal: R$ ${sale.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       msg += `Desconto: R$ ${sale.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
-      msg += `*Total Final: R$ ${sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
+      if (tradeIn) {
+        msg += `Abatimento Troca: R$ ${tradeIn.purchase_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      }
+      const finalDiff = sale.total - (tradeIn ? tradeIn.purchase_price : 0);
+      msg += `*${tradeIn ? 'Diferença Paga' : 'Total Final'}: R$ ${finalDiff.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
       msg += `Forma de pagamento: ${sale.payment_method}\n`;
       msg += `Obrigado pela preferência!`;
 
@@ -759,6 +953,7 @@ window.views.sales = {
         else if (s.status === 'cancelada') statusBadge = `<span class="badge badge-danger">Cancelada</span>`;
         else statusBadge = `<span class="badge badge-warning">Pendente</span>`;
 
+        const isTradeInSale = s.payment_method && s.payment_method.includes('Troca');
         return `
           <tr data-id="${s.id}">
             <td>#${s.id}</td>
@@ -768,7 +963,10 @@ window.views.sales = {
             <td>R$ ${s.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
             <td class="text-danger">- R$ ${s.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
             <td class="font-semibold text-primary">R$ ${s.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-            <td>${s.payment_method} ${s.installments > 1 ? `(${s.installments}x)` : ''}</td>
+            <td>
+              ${s.payment_method} ${s.installments > 1 ? `(${s.installments}x)` : ''}
+              ${isTradeInSale ? `<br><small class="badge badge-success" style="font-size: 9px; padding: 2px 4px; display: inline-block; margin-top: 4px; background-color: var(--success); color: white; border-radius: 4px;">🔄 Retomada/Troca</small>` : ''}
+            </td>
             <td>${statusBadge}</td>
             <td>
               <div style="display:flex; gap: 4px;">

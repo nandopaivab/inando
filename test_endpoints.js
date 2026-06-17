@@ -53,11 +53,11 @@ function assert(cond, msg) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 async function runTests() {
-  const env = { ...process.env, PORT: String(PORT) };
+  const env = { ...process.env, PORT: String(PORT), DB_FILE: path.join(PROJECT_DIR, 'db_test.sqlite3') };
 
   const fs = require('fs');
   try {
-    fs.unlinkSync(path.join(PROJECT_DIR, 'db.sqlite3'));
+    fs.unlinkSync(path.join(PROJECT_DIR, 'db_test.sqlite3'));
   } catch (e) {}
 
   console.log(`\n🚀 Iniciando servidor de testes na porta ${PORT}...\n`);
@@ -193,6 +193,54 @@ async function runTests() {
     assert(r9c.status === 201, 'Status 201');
     assert(r9c.body.total === 9999.0, 'Total R$ 9999.00 ✓');
     console.log(`     Venda Mista ID: ${r9c.body.sale_id} | Total: R$ ${r9c.body.total}`);
+
+    // ── 9d. Venda com Aparelho de Troca (Trade-in) ───────────────────────────
+    console.log('\n💰 Teste 9d: POST /api/sales (PDV com Troca)');
+    const randImei1 = '359' + Math.floor(100000000000 + Math.random() * 900000000000);
+    const randImei2 = '351' + Math.floor(100000000000 + Math.random() * 900000000000);
+    const randImei3 = '351' + Math.floor(100000000000 + Math.random() * 900000000000);
+
+    const newProdTradeTest = {
+      brand: 'Apple', model: 'iPhone 15 Pro Max 256GB TESTE TROCA',
+      category: 'celular', state: 'novo', color: 'Preto Space',
+      capacity: '256GB', ram: '8GB', imei_1: randImei1,
+      supplier: 'Dist. Teste', purchase_date: '2026-06-17',
+      purchase_price: 7000.0, selling_price: 9000.0, commission_percent: 2.0
+    };
+    const rProdTrade = await request('POST', '/products', newProdTradeTest, token);
+    const prodIdTrade = rProdTrade.body.id;
+
+    const r9d = await request('POST', '/sales', {
+      client_id: cliId,
+      product_ids: [prodIdTrade],
+      discount: 0,
+      payment_method: 'PIX',
+      installments: 1,
+      trade_in: {
+        brand: 'Apple',
+        model: 'iPhone 13 Usado',
+        color: 'Azul',
+        capacity: '128 GB',
+        ram: '4 GB',
+        state: 'usado',
+        imei_1: randImei2,
+        imei_2: randImei3,
+        serial_number: 'SERIAL' + Math.floor(100000 + Math.random() * 900000),
+        valuation_value: 2000.0
+      }
+    }, token);
+    assert(r9d.status === 201, 'Status 201 para venda com troca');
+    assert(r9d.body.total === 9000.0, 'Total da venda correto (R$ 9000.00)');
+    const tradeSaleId = r9d.body.sale_id;
+    console.log(`     Venda com Troca ID: ${tradeSaleId} | Total: R$ ${r9d.body.total}`);
+
+    // Verify receipt contains trade-in
+    const r10d = await request('GET', `/sales/${tradeSaleId}`, null, token);
+    assert(r10d.status === 200, 'Status 200 para recibo com troca');
+    assert(r10d.body.trade_in !== null, 'Trade-in deve estar preenchido');
+    assert(r10d.body.trade_in.brand === 'Apple', 'Marca do trade-in correta');
+    assert(r10d.body.trade_in.purchase_price === 2000.0, 'Valor de avaliação do trade-in correto');
+    console.log(`     Recibo com Troca: Marca=${r10d.body.trade_in.brand}, Valor=R$ ${r10d.body.trade_in.purchase_price}`);
 
     // ── 10. Recibo da venda ─────────────────────────────────────────────────
     console.log('\n🧾 Teste 10: GET /api/sales/:id (recibo)');

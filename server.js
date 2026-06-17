@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const appleCoverage = require('./server/routes/appleCoverage');
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
-const DB_FILE = path.join(__dirname, 'db.sqlite3');
+const DB_FILE = process.env.DB_FILE ? path.resolve(process.env.DB_FILE) : path.join(__dirname, 'db.sqlite3');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const app = express();
@@ -800,7 +800,7 @@ app.get('/api/sales', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/sales', authMiddleware, async (req, res) => {
-  const { client_id, product_ids, discount, payment_method, installments } = req.body;
+  const { client_id, product_ids, discount, payment_method, installments, trade_in } = req.body;
   if (!product_ids || product_ids.length === 0 || !payment_method) {
     return res.status(400).json({ error: 'Venda sem produtos ou forma de pagamento' });
   }
@@ -825,6 +825,8 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
 
   const discVal = parseFloat(discount || 0.0);
   const total = Math.max(0, subtotal - discVal);
+  const tradeInVal = trade_in ? parseFloat(trade_in.valuation_value || 0.0) : 0.0;
+  const expectedDifference = Math.max(0, total - tradeInVal);
 
   if (payment_method === 'Misto') {
     if (!req.body.mixed_payments) {
@@ -836,16 +838,18 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
     const debVal = parseFloat(mix.debito || 0.0);
     const credVal = parseFloat(mix.credito || 0.0);
     const mixTotal = cashVal + pixVal + debVal + credVal;
-    if (Math.abs(mixTotal - total) > 0.02) {
-      return res.status(400).json({ error: `A soma dos valores (R$ ${mixTotal.toFixed(2)}) não confere com o total da venda (R$ ${total.toFixed(2)})` });
+    if (Math.abs(mixTotal - expectedDifference) > 0.02) {
+      return res.status(400).json({ error: `A soma dos valores (R$ ${mixTotal.toFixed(2)}) não confere com a diferença a pagar (R$ ${expectedDifference.toFixed(2)})` });
     }
   }
+
+  const finalPaymentMethod = trade_in ? `Troca + ${payment_method}` : payment_method;
 
   // Insert sale
   await dbRun(`
     INSERT INTO sales (client_id, user_id, subtotal, discount, total, payment_method, installments, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'concluida')
-  `, [client_id, req.user.id, subtotal, discVal, total, payment_method, installments || 1]);
+  `, [client_id, req.user.id, subtotal, discVal, total, finalPaymentMethod, installments || 1]);
   
   const lastSale = await dbGet("SELECT last_insert_rowid() as id");
   const sale_id = lastSale.id;
@@ -866,48 +870,119 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
     `, [p.id, req.user.id, `Venda ID: ${sale_id}`]);
   }
 
-  // Finance Transactions
+  // Handle trade-in device registration if present
   const todayStr = new Date().toISOString().slice(0, 10);
-  if (payment_method === 'Misto' && req.body.mixed_payments) {
-    const mix = req.body.mixed_payments;
-    if (mix.dinheiro > 0) {
+  if (trade_in) {
+    const brand = trade_in.brand || 'Apple';
+    const modelName = trade_in.model || 'iPhone';
+    const category = trade_in.category || 'celular';
+    const color = trade_in.color || 'Preto';
+    const capacity = trade_in.capacity || '128 GB';
+    const ram = trade_in.ram || '8 GB';
+    const state = trade_in.state || 'usado';
+    const valVal = parseFloat(trade_in.valuation_value || 0.0);
+
+    let modelId = null;
+    const existingModel = await dbGet(`
+      SELECT id FROM product_models
+      WHERE UPPER(brand) = ? AND UPPER(model) = ? AND UPPER(color) = ? AND UPPER(capacity) = ? AND UPPER(ram) = ?
+    `, [brand.toUpperCase(), modelName.toUpperCase(), color.toUpperCase(), capacity.toUpperCase(), ram.toUpperCase()]);
+
+    if (existingModel) {
+      modelId = existingModel.id;
+    } else {
       await dbRun(`
-        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
-        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
-      `, [mix.dinheiro, `Recebimento Misto (Dinheiro) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+        INSERT INTO product_models (brand, model, category, color, capacity, ram, min_stock_alert)
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+      `, [brand, modelName, category, color, capacity, ram]);
+      const newModel = await dbGet("SELECT last_insert_rowid() as id");
+      modelId = newModel.id;
     }
-    if (mix.pix > 0) {
-      await dbRun(`
-        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
-        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
-      `, [mix.pix, `Recebimento Misto (Pix) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+
+    const suggestedSellingPrice = valVal * 1.3;
+    let clientName = 'Cliente Final';
+    if (client_id) {
+      const clientRow = await dbGet("SELECT name FROM clients WHERE id = ?", [client_id]);
+      if (clientRow) clientName = clientRow.name;
     }
-    if (mix.debito > 0) {
-      await dbRun(`
-        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
-        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
-      `, [mix.debito, `Recebimento Misto (Débito) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
-    }
-    if (mix.credito > 0) {
-      await dbRun(`
-        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
-        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
-      `, [mix.credito, `Recebimento Misto (Crédito) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
-    }
-  } else if (payment_method === 'Credito' && installments > 1) {
-    const valInst = total / installments;
-    for (let i = 1; i <= installments; i++) {
-      const due = new Date(Date.now() + 30 * i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      await dbRun(`
-        INSERT INTO finance_transactions (type, category, amount, description, due_date, status, sale_id)
-        VALUES ('receita', 'venda', ?, ?, ?, 'pendente', ?)
-      `, [valInst, `Venda #${sale_id} Parcela ${i}/${installments}`, due, sale_id]);
-    }
-  } else {
+
+    await dbRun(`
+      INSERT INTO products (model_id, imei_1, imei_2, serial_number, state, purchase_date, supplier, purchase_price, selling_price, commission_percent, status)
+      VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?, 2.0, 'disponivel')
+    `, [
+      modelId, 
+      trade_in.imei_1 || null, 
+      trade_in.imei_2 || null, 
+      trade_in.serial_number || null, 
+      state, 
+      `Troca - Cliente: ${clientName}`, 
+      valVal, 
+      suggestedSellingPrice
+    ]);
+    const newProd = await dbGet("SELECT last_insert_rowid() as id");
+    const tradeInProductId = newProd.id;
+
+    await dbRun(`
+      INSERT INTO stock_movements (product_id, type, quantity, user_id, notes)
+      VALUES (?, 'entrada', 1, ?, ?)
+    `, [tradeInProductId, req.user.id, `Entrada via Troca na Venda ID: ${sale_id}`]);
+
+    await dbRun(`
+      INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+      VALUES ('despesa', 'compra_produto', ?, ?, ?, ?, 'pago', ?)
+    `, [valVal, `Compra via Retomada/Troca - Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+  }
+
+  // Finance Transactions Receipts
+  if (tradeInVal > 0) {
     await dbRun(`
       INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
       VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
-    `, [total, `Recebimento Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+    `, [tradeInVal, `Recebimento Troca (Aparelho Recebido) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+  }
+
+  if (expectedDifference > 0) {
+    if (payment_method === 'Misto' && req.body.mixed_payments) {
+      const mix = req.body.mixed_payments;
+      if (mix.dinheiro > 0) {
+        await dbRun(`
+          INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+          VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+        `, [mix.dinheiro, `Recebimento Misto (Dinheiro) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+      }
+      if (mix.pix > 0) {
+        await dbRun(`
+          INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+          VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+        `, [mix.pix, `Recebimento Misto (Pix) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+      }
+      if (mix.debito > 0) {
+        await dbRun(`
+          INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+          VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+        `, [mix.debito, `Recebimento Misto (Débito) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+      }
+      if (mix.credito > 0) {
+        await dbRun(`
+          INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+          VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+        `, [mix.credito, `Recebimento Misto (Crédito) Venda #${sale_id}`, todayStr, todayStr, sale_id]);
+      }
+    } else if (payment_method === 'Credito' && installments > 1) {
+      const valInst = expectedDifference / installments;
+      for (let i = 1; i <= installments; i++) {
+        const due = new Date(Date.now() + 30 * i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        await dbRun(`
+          INSERT INTO finance_transactions (type, category, amount, description, due_date, status, sale_id)
+          VALUES ('receita', 'venda', ?, ?, ?, 'pendente', ?)
+        `, [valInst, `Venda #${sale_id} Parcela ${i}/${installments}`, due, sale_id]);
+      }
+    } else {
+      await dbRun(`
+        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
+        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
+      `, [expectedDifference, `Recebimento Venda #${sale_id} (${payment_method})`, todayStr, todayStr, sale_id]);
+    }
   }
 
   // Seller commission
@@ -943,7 +1018,15 @@ app.get('/api/sales/:id', authMiddleware, async (req, res) => {
     WHERE si.sale_id = ?
   `, [req.params.id]);
 
-  res.json({ sale, items });
+  const tradeIn = await dbGet(`
+    SELECT p.*, pm.brand, pm.model, pm.color, pm.capacity, pm.ram
+    FROM products p
+    JOIN product_models pm ON p.model_id = pm.id
+    JOIN stock_movements sm ON p.id = sm.product_id
+    WHERE sm.type = 'entrada' AND sm.notes = ?
+  `, [`Entrada via Troca na Venda ID: ${req.params.id}`]);
+
+  res.json({ sale, items, trade_in: tradeIn || null });
 });
 
 app.delete('/api/sales/:id', authMiddleware, async (req, res) => {
