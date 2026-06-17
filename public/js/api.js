@@ -48,7 +48,7 @@ const api = {
 
       if (!response.ok) {
         // Handle 401 Unauthorized globally
-        if (response.status === 401 && path !== '/login' && path !== '/verify-2fa') {
+        if (response.status === 401 && path !== '/login') {
           this.setToken(null);
           window.dispatchEvent(new Event('unauthorized'));
         }
@@ -68,17 +68,6 @@ const api = {
       const res = await api.request('/login', {
         method: 'POST',
         body: { email, password }
-      });
-      if (res.token) {
-        api.setToken(res.token);
-      }
-      return res;
-    },
-    
-    async verify2FA(email, code) {
-      const res = await api.request('/verify-2fa', {
-        method: 'POST',
-        body: { email, code }
       });
       if (res.token) {
         api.setToken(res.token);

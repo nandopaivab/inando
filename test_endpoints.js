@@ -82,25 +82,19 @@ async function runTests() {
   let token = null;
 
   try {
-    // ── 1. Login (2FA) ──────────────────────────────────────────────────────
+    // ── 1. Login ────────────────────────────────────────────────────────────
     console.log('🔐 Teste 1: POST /api/login (Admin)');
-    const r1 = await request('POST', '/login', { email: 'test2fa@email.com', password: 'F3rn@nd0' });
+    const r1 = await request('POST', '/login', { email: 'nandopaiva@gmail.com', password: 'F3rn@nd0' });
     assert(r1.status === 200, `Status 200 (recebeu ${r1.status})`);
-    assert(r1.body.two_factor_required === true, 'two_factor_required = true');
-
-    // ── 2. Verificar 2FA ────────────────────────────────────────────────────
-    console.log('\n🔑 Teste 2: POST /api/verify-2fa');
-    const r2 = await request('POST', '/verify-2fa', { email: 'test2fa@email.com', code: '123456' });
-    assert(r2.status === 200, `Status 200`);
-    assert(!!r2.body.token, 'Token JWT gerado');
-    assert(r2.body.user.role === 'admin', 'Role = admin');
-    token = r2.body.token;
+    assert(!!r1.body.token, 'Token JWT gerado');
+    assert(r1.body.user.role === 'admin', 'Role = admin');
+    token = r1.body.token;
 
     // ── 3. Auth/me ──────────────────────────────────────────────────────────
     console.log('\n👤 Teste 3: GET /api/auth/me');
     const r3 = await request('GET', '/auth/me', null, token);
     assert(r3.status === 200, 'Status 200');
-    assert(r3.body.email === 'test2fa@email.com', 'E-mail correto');
+    assert(r3.body.email === 'nandopaiva@gmail.com', 'E-mail correto');
 
     // ── 4. Dashboard ────────────────────────────────────────────────────────
     console.log('\n📊 Teste 4: GET /api/dashboard');
