@@ -767,7 +767,7 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
   const prods = [];
   for (const pid of product_ids) {
     const p = await dbGet(`
-      SELECT p.*, pm.brand, pm.model, pm.commission_percent
+      SELECT p.*, pm.brand, pm.model
       FROM products p
       JOIN product_models pm ON p.model_id = pm.id
       WHERE p.id = ?
