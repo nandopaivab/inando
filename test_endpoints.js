@@ -294,6 +294,15 @@ async function runTests() {
     console.log(`     Consulta IMEI limpo: ${r16a.body.status_label}`);
     console.log(`     Consulta IMEI bloqueado: ${r16b.body.status_label}`);
 
+    // ── 17. Relatório de Comissões ──────────────────────────────────────────
+    console.log('\n💰 Teste 17: GET /api/reports/commissions');
+    const r17 = await request('GET', '/reports/commissions?start=2026-05-01&end=2026-06-30', null, token);
+    assert(r17.status === 200, 'Status 200 para relatório de comissões');
+    assert(Array.isArray(r17.body), 'Array de comissões por vendedor retornado');
+    if (r17.body.length > 0) {
+      console.log(`     Comissões do Vendedor: ${r17.body[0].seller_name} - Vendas: ${r17.body[0].sales_count}, Faturamento: R$ ${r17.body[0].total_sales.toFixed(2)}, Comissão: R$ ${r17.body[0].total_commission.toFixed(2)}`);
+    }
+
     // ── Resultado ───────────────────────────────────────────────────────────
     console.log('\n' + '═'.repeat(57));
     console.log(`🎉  ${passed} TESTES PASSARAM COM SUCESSO!`);

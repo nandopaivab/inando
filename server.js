@@ -1110,6 +1110,45 @@ app.delete('/api/finance/transactions/:id', authMiddleware, async (req, res) => 
   res.json({ message: 'Lançamento financeiro excluido' });
 });
 
+app.get('/api/reports/commissions', authMiddleware, async (req, res) => {
+  if (req.user.role === 'seller') {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const { start, end } = req.query;
+  let dateFilterSales = "";
+  let dateFilterItems = "";
+  const paramsSales = [];
+  const paramsItems = [];
+
+  if (start && end) {
+    dateFilterSales = " AND date(s.sale_date) BETWEEN ? AND ?";
+    dateFilterItems = " AND date(s.sale_date) BETWEEN ? AND ?";
+    paramsSales.push(start, end);
+    paramsItems.push(start, end);
+  }
+
+  const sql = `
+    SELECT 
+      u.id as seller_id,
+      u.name as seller_name,
+      u.email as seller_email,
+      (SELECT COUNT(*) FROM sales s WHERE s.user_id = u.id AND s.status = 'concluida'${dateFilterSales}) as sales_count,
+      (SELECT IFNULL(SUM(s.total), 0.0) FROM sales s WHERE s.user_id = u.id AND s.status = 'concluida'${dateFilterSales}) as total_sales,
+      (SELECT IFNULL(SUM(si.commission_paid), 0.0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE s.user_id = u.id AND s.status = 'concluida'${dateFilterItems}) as total_commission
+    FROM users u
+  `;
+
+  const allParams = [...paramsSales, ...paramsSales, ...paramsItems];
+  try {
+    const rows = await dbAll(sql, allParams);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching commissions report:", err);
+    res.status(500).json({ error: "Erro ao gerar relatório de comissões" });
+  }
+});
+
 app.get('/api/finance/dre', authMiddleware, async (req, res) => {
   const { start, end } = req.query;
   const start_date = start || '2026-05-01';

@@ -266,6 +266,12 @@ const api = {
     }
   },
 
+  reports: {
+    async getCommissions(start = '', end = '') {
+      return await api.request(`/reports/commissions?start=${start}&end=${end}`);
+    }
+  },
+
   // Settings
   settings: {
     async get() {
