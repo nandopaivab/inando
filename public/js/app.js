@@ -262,16 +262,6 @@ window.app = {
       // Clear current stock warnings
       this.notifications = [];
 
-      // Check low stock
-      if (dbInfo.low_stock && dbInfo.low_stock.length > 0) {
-        dbInfo.low_stock.forEach(item => {
-          this.addNotification({
-            type: 'estoque',
-            message: `Alerta: Produto ${item.brand} ${item.model} está com estoque baixo (${item.stock_count} un).`
-          });
-        });
-      }
-
       // Check simulated accounts payable/receivable (e.g. check unpaid items due soon)
       const txs = await window.api.finance.listTransactions({ status: 'pendente' });
       const today = new Date().toISOString().split('T')[0];

@@ -58,29 +58,7 @@ window.views.dashboard = {
         </div>
       </div>
 
-      <div class="dashboard-columns">
-        <!-- Low stock notifications -->
-        <div class="card-list">
-          <h3>⚠️ Alerta de Estoque Baixo</h3>
-          <div class="table-responsive">
-            <table id="dash-low-stock-table">
-              <thead>
-                <tr>
-                  <th>Produto</th>
-                  <th>Categoria</th>
-                  <th>Qtd Estoque</th>
-                  <th>Mínimo</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="4" class="empty-state">Carregando dados...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
+      <div class="dashboard-columns" style="grid-template-columns: 1fr;">
         <!-- Recent activities -->
         <div class="card-list">
           <h3>📝 Histórico de Atividades Recentes</h3>
@@ -105,21 +83,6 @@ window.views.dashboard = {
         profitEl.className = 'val text-danger';
       } else {
         profitEl.className = 'val text-success';
-      }
-
-      // Populate Low Stock table
-      const lowStockBody = document.querySelector('#dash-low-stock-table tbody');
-      if (data.low_stock.length === 0) {
-        lowStockBody.innerHTML = `<tr><td colspan="4" class="empty-state text-success">🎉 Todos os produtos estão com estoque ideal!</td></tr>`;
-      } else {
-        lowStockBody.innerHTML = data.low_stock.map(item => `
-          <tr>
-            <td><strong>${item.brand}</strong> ${item.model}</td>
-            <td><span class="badge badge-info">${item.category.toUpperCase()}</span></td>
-            <td class="text-danger font-semibold">${item.stock_count} un</td>
-            <td class="text-muted">${item.min_stock_alert} un</td>
-          </tr>
-        `).join('');
       }
 
       // Populate Activity Logs

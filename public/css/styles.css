@@ -1134,16 +1134,29 @@ tr:hover td {
   }
   
   .workspace {
-    padding: 16px !important;
+    padding: 0 !important;
     width: 100% !important;
-    overflow-x: hidden;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
   }
   
   .workspace-header {
-    padding: 12px 0 !important;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+    height: 64px !important;
+    padding: 0 16px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    display: flex !important;
+  }
+  
+  .viewport-content {
+    padding: 16px !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
   }
   
   .table-responsive {
