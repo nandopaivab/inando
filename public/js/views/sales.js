@@ -48,9 +48,14 @@ window.views.sales = {
             
             <div style="margin-top: 12px;">
               <label style="font-size: 11px; color: var(--text-muted);">Busca manual por catálogo</label>
-              <select id="pos-manual-select" style="margin-top: 4px;">
-                <option value="">Selecione um aparelho disponível...</option>
-              </select>
+              <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <select id="pos-manual-select" style="flex: 1; margin: 0;">
+                  <option value="">Selecione um aparelho disponível...</option>
+                </select>
+                <button type="button" class="btn btn-primary" id="btn-add-manual-cart" style="padding: 0 16px; font-weight: 600; display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer;">
+                  ➕ Adicionar
+                </button>
+              </div>
             </div>
           </div>
 
@@ -197,15 +202,18 @@ window.views.sales = {
       }
     });
 
-    // Manual add
-    manualSelect.addEventListener('change', () => {
+    // Manual add button listener
+    document.getElementById('btn-add-manual-cart').addEventListener('click', () => {
       const id = parseInt(manualSelect.value);
-      if (id) {
-        const p = this.availableProducts.find(prod => Number(prod.id) === Number(id));
-        if (p) {
-          this.addToCart(p);
-          manualSelect.value = '';
-        }
+      if (!id) {
+        window.app.showToast('Por favor, selecione um aparelho no catálogo!', 'warning');
+        return;
+      }
+      const p = this.availableProducts.find(prod => Number(prod.id) === Number(id));
+      if (p) {
+        this.addToCart(p);
+        manualSelect.value = '';
+        window.app.showToast(`Adicionado: ${p.brand} ${p.model}`, 'success');
       }
     });
 
