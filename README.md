@@ -15,10 +15,10 @@ Acesse: http://localhost:8000
 
 | Usuário     | E-mail                    | Senha          | 2FA    |
 |-------------|---------------------------|----------------|--------|
-| Admin       | admin@inando.com          | admin123       | 123456 |
-| Gerente     | gerente@inando.com        | gerente123     | —      |
-| Vendedor    | vendedor@inando.com       | vendedor123    | —      |
-| Financeiro  | financeiro@inando.com     | financeiro123  | —      |
+| Admin       | nandopaiva@gmail.com          | admin123       | 123456 |
+| Gerente     | gerente@inandostore.com.br        | gerente123     | —      |
+| Vendedor    | vendedor@inandostore.com.br       | vendedor123    | —      |
+| Financeiro  | financeiro@inandostore.com.br     | financeiro123  | —      |
 
 ## Deploy no Railway
 

@@ -99,11 +99,11 @@ async function initDb() {
       capacity TEXT NOT NULL,
       ram TEXT NOT NULL,
       state TEXT CHECK(state IN ('novo', 'seminovo', 'usado', 'recondicionado')) NOT NULL,
-      purchase_date TEXT NOT NULL,
-      supplier TEXT NOT NULL,
+      purchase_date TEXT,
+      supplier TEXT,
       purchase_price REAL NOT NULL,
       selling_price REAL NOT NULL,
-      min_stock_alert INTEGER DEFAULT 2,
+      min_stock_alert INTEGER DEFAULT 1,
       commission_percent REAL DEFAULT 0.0,
       images TEXT,
       qr_code TEXT,
@@ -203,10 +203,10 @@ async function initDb() {
   }
 
   const usersSeed = [
-    ['admin@inando.com', hashPassword('admin123'), 'Fernando Paiva', 'admin', 'XYZ123ABC', 1],
-    ['gerente@inando.com', hashPassword('gerente123'), 'Carlos Silva', 'manager', 'XYZ123ABC', 0],
-    ['vendedor@inando.com', hashPassword('vendedor123'), 'Mariana Souza', 'seller', 'XYZ123ABC', 0],
-    ['financeiro@inando.com', hashPassword('financeiro123'), 'Roberto Cruz', 'financial', 'XYZ123ABC', 0]
+    ['nandopaiva@gmail.com', hashPassword('admin123'), 'Fernando Paiva', 'admin', 'XYZ123ABC', 1],
+    ['gerente@inandostore.com.br', hashPassword('gerente123'), 'Carlos Silva', 'manager', 'XYZ123ABC', 0],
+    ['vendedor@inandostore.com.br', hashPassword('vendedor123'), 'Mariana Souza', 'seller', 'XYZ123ABC', 0],
+    ['financeiro@inandostore.com.br', hashPassword('financeiro123'), 'Roberto Cruz', 'financial', 'XYZ123ABC', 0]
   ];
   for (const [email, pw_hash, name, role, secret, is_2fa] of usersSeed) {
     await dbRun(`
@@ -217,28 +217,8 @@ async function initDb() {
 
   const prodCount = await dbGet("SELECT COUNT(*) as count FROM products");
   if (prodCount.count === 0) {
-    const products = [
-      ['Apple', 'iPhone 13 128GB Midnight', 'celular', '359874102547896', '359874102547897', null, 'Preto', '128GB', '4GB', 'novo', '2026-05-10', 'Distribuidora Apple BR', 3200.0, 4599.0, 2, 2.0],
-      ['Apple', 'iPhone 14 Pro 256GB Space Black', 'celular', '351245789654123', '351245789654124', null, 'Preto Espacial', '256GB', '6GB', 'seminovo', '2026-05-12', 'Importadora Outlet', 4800.0, 6499.0, 1, 2.5],
-      ['Samsung', 'Galaxy S23 Ultra 256GB Green', 'celular', '359988776655443', '359988776655444', null, 'Verde', '256GB', '8GB', 'novo', '2026-05-15', 'Samsung Brasil', 4000.0, 5299.0, 2, 3.0],
-      ['Apple', 'Watch Series 8 45mm GPS Midnight', 'smartwatch', null, null, 'FH7X90ASD89', 'Preto', '32GB', '1.5GB', 'novo', '2026-05-18', 'Distribuidora Apple BR', 1600.0, 2499.0, 2, 1.5],
-      ['Apple', 'iPad Air 5 64GB M1 Space Gray', 'tablet', null, null, 'DMPX8921ASK', 'Cinza Espacial', '64GB', '8GB', 'novo', '2026-05-20', 'Distribuidora Apple BR', 3000.0, 4299.0, 2, 2.0],
-      ['Xiaomi', 'Redmi Note 12 128GB Blue', 'celular', '357849302194857', '357849302194858', null, 'Azul', '128GB', '4GB', 'novo', '2026-05-25', 'Xiaomi Import', 850.0, 1299.0, 5, 4.0],
-      ['Carregador', 'Apple USB-C 20W', 'acessorios', null, null, 'CHARGER20W001', 'Branco', 'N/A', 'N/A', 'novo', '2026-05-01', 'Distribuidora Apple BR', 60.0, 199.0, 10, 0.0],
-      ['Cabo', 'Lightning para USB-C 1m', 'acessorios', null, null, 'CABLELIGHT001', 'Branco', 'N/A', 'N/A', 'novo', '2026-05-01', 'Distribuidora Apple BR', 40.0, 149.0, 10, 0.0]
-    ];
-    for (const p of products) {
-      await dbRun(`
-        INSERT INTO products (brand, model, category, imei_1, imei_2, serial_number, color, capacity, ram, state, purchase_date, supplier, purchase_price, selling_price, min_stock_alert, commission_percent, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'disponivel')
-      `, p);
-      const lastId = await dbGet("SELECT last_insert_rowid() as id");
-      
-      await dbRun(`
-        INSERT INTO stock_movements (product_id, type, quantity, user_id, notes)
-        VALUES (?, 'entrada', 1, 1, 'Entrada inicial de saldo de estoque')
-      `, [lastId.id]);
-    }
+    // Nenhum produto pré-cadastrado — o usuário fará os lançamentos manualmente
+    // Os produtos podem ser cadastrados pela interface em Produtos → Novo Produto
 
     const clients = [
       ['João da Silva', '123.456.789-00', '(11) 98888-7777', '(11) 98888-7777', 'joao.silva@email.com', 'Rua Augusta, 1500, Apto 51 - São Paulo/SP', '1990-04-12', 'Cliente prefere iPhones seminovos.'],
@@ -252,56 +232,8 @@ async function initDb() {
       `, c);
     }
 
-    const salesSeed = [
-      [1, 3, '2026-05-15 14:30:00', 4599.0, 100.0, 4499.0, 'PIX', 1],
-      [2, 3, '2026-05-20 16:15:00', 2499.0, 0.0, 2499.0, 'Credito', 3],
-      [1, 3, '2026-06-02 10:00:00', 1299.0, 50.0, 1249.0, 'Dinheiro', 1],
-      [3, 3, '2026-06-10 11:45:00', 4299.0, 299.0, 4000.0, 'PIX', 1]
-    ];
-    const soldProds = [1, 4, 6, 5];
-    for (let i = 0; i < salesSeed.length; i++) {
-      const [client_id, user_id, date, subtotal, discount, total, pay_method, installments] = salesSeed[i];
-      await dbRun(`
-        INSERT INTO sales (client_id, user_id, sale_date, subtotal, discount, total, payment_method, installments, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'concluida')
-      `, [client_id, user_id, date, subtotal, discount, total, pay_method, installments]);
-      const saleIdRow = await dbGet("SELECT last_insert_rowid() as id");
-      const sale_id = saleIdRow.id;
-
-      const p_id = soldProds[i];
-      const prod = await dbGet("SELECT selling_price, commission_percent FROM products WHERE id = ?", [p_id]);
-      const comm = prod.selling_price * (prod.commission_percent / 100.0);
-
-      await dbRun(`
-        INSERT INTO sale_items (sale_id, product_id, selling_price, commission_paid)
-        VALUES (?, ?, ?, ?)
-      `, [sale_id, p_id, prod.selling_price, comm]);
-
-      await dbRun(`
-        INSERT INTO stock_movements (product_id, type, quantity, user_id, notes)
-        VALUES (?, 'saida_venda', 1, ?, ?)
-      `, [p_id, user_id, `Venda ID: ${sale_id}`]);
-
-      await dbRun("UPDATE products SET status = 'vendido' WHERE id = ?", [p_id]);
-
-      await dbRun(`
-        INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status, sale_id)
-        VALUES ('receita', 'venda', ?, ?, ?, ?, 'pago', ?)
-      `, [total, `Recebimento Venda #${sale_id}`, date.slice(0, 10), date.slice(0, 10), sale_id]);
-    }
-
-    const financeSeeds = [
-      ['despesa', 'aluguel', 2500.0, 'Aluguel Mensal Loja', '2026-05-10', '2026-05-10', 'pago'],
-      ['despesa', 'energia', 350.0, 'Conta de Energia Elétrica', '2026-05-15', '2026-05-15', 'pago'],
-      ['despesa', 'fornecedor', 3200.0, 'Compra iPhone 13 Fornecedor', '2026-05-10', '2026-05-10', 'pago'],
-      ['despesa', 'fornecedor', 1600.0, 'Compra Watch Fornecedor', '2026-05-18', '2026-05-18', 'pago'],
-      ['despesa', 'aluguel', 2500.0, 'Aluguel Mensal Loja', '2026-06-10', '2026-06-10', 'pago'],
-      ['despesa', 'energia', 320.0, 'Conta de Energia Elétrica', '2026-06-15', '2026-06-15', 'pago'],
-      ['despesa', 'fornecedor', 850.0, 'Compra Redmi Fornecedor', '2026-05-25', '2026-05-25', 'pago'],
-      ['despesa', 'fornecedor', 3000.0, 'Compra iPad Fornecedor', '2026-05-20', '2026-05-20', 'pago'],
-      ['despesa', 'pro-labore', 4000.0, 'Pro-Labore Sócios', '2026-06-05', '2026-06-05', 'pago'],
-      ['despesa', 'comissao', 91.98, 'Comissões de Vendas Maio', '2026-05-31', '2026-05-31', 'pago']
-    ];
+    // Nenhuma transação financeira pré-cadastrada - o sistema começará limpo para produção
+    const financeSeeds = [];
     for (const f of financeSeeds) {
       await dbRun(`
         INSERT INTO finance_transactions (type, category, amount, description, due_date, payment_date, status)
@@ -553,7 +485,7 @@ app.post('/api/products', authMiddleware, async (req, res) => {
       brand, model, category, imei_1, imei_2, serial_number,
       color || 'N/A', capacity || 'N/A', ram || 'N/A', state || 'novo',
       purchase_date || new Date().toISOString().slice(0,10), supplier || 'N/A',
-      purchase_price, selling_price, parseInt(req.body.min_stock_alert || 2), parseFloat(commission_percent || 0.0),
+      purchase_price, selling_price, parseInt(req.body.min_stock_alert || 1), parseFloat(commission_percent || 0.0),
       JSON.stringify(images || []), qr_val
     ]);
     
