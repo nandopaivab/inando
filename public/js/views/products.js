@@ -225,7 +225,7 @@ window.views.products = {
           </div>
           <div class="form-group" style="display:none;">
             <label for="prod-min-stock">Estoque Mínimo (Alerta)</label>
-            <input type="number" id="prod-min-stock" min="1" value="${prod ? prod.min_stock_alert : 1}">
+            <input type="number" id="prod-min-stock" min="0" value="${prod ? prod.min_stock_alert : 0}">
           </div>
         </div>
 
@@ -414,7 +414,7 @@ window.views.products = {
             </div>
             <div class="form-group">
               <label for="new-model-min-stock">Estoque Mínimo (Alerta) *</label>
-              <input type="number" id="new-model-min-stock" min="1" value="1" required>
+              <input type="number" id="new-model-min-stock" min="0" value="0" required>
             </div>
           </div>
           <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">

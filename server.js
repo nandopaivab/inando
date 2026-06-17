@@ -95,7 +95,7 @@ async function initDb() {
       color TEXT NOT NULL,
       capacity TEXT NOT NULL,
       ram TEXT NOT NULL,
-      min_stock_alert INTEGER DEFAULT 1,
+      min_stock_alert INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
