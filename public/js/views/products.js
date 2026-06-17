@@ -125,6 +125,7 @@ window.views.products = {
               <div class="flex-actions" style="display: flex; gap: 6px;">
                 <button class="btn btn-ghost btn-sm btn-qr" title="Gerar QR Code">📱 QR</button>
                 ${p.imei_1 ? `<button class="btn btn-ghost btn-sm btn-imei" title="Consultar IMEI Blacklist">🔍 IMEI</button>` : ''}
+                ${(p.brand && p.brand.toLowerCase() === 'apple' && p.serial_number) ? `<button class="btn btn-ghost btn-sm btn-serial" title="Consultar Cobertura Apple" style="color: var(--danger);">🍎 Serial</button>` : ''}
                 ${canManage ? `
                   <button class="btn btn-ghost btn-sm btn-edit" title="Editar">✏️</button>
                   ${p.status !== 'vendido' ? `<button class="btn btn-ghost btn-sm btn-delete text-danger" title="Excluir">🗑️</button>` : ''}
@@ -147,6 +148,13 @@ window.views.products = {
         btn.addEventListener('click', (e) => {
           const id = parseInt(e.target.closest('tr').dataset.id);
           this.showIMEICheckModal(id);
+        });
+      });
+
+      tbody.querySelectorAll('.btn-serial').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = parseInt(e.target.closest('tr').dataset.id);
+          this.showAppleCoverageModal(id);
         });
       });
 
@@ -697,6 +705,171 @@ window.views.products = {
             ❌ Erro ao consultar IMEI: ${err.message}
           </div>
         `;
+      }
+    });
+  },
+
+  showAppleCoverageModal(id) {
+    const prod = this.products.find(p => p.id === id);
+    if (!prod || !prod.serial_number) return;
+
+    const modalTitle = `Consulta de Garantia Apple: ${prod.brand} ${prod.model}`;
+    const serial = prod.serial_number;
+
+    const content = `
+      <div id="apple-coverage-container" style="padding: 10px 0;">
+        <p style="font-size: 14px; margin-bottom: 16px; color: var(--text-secondary);">
+          Consulte o status de ativação, validade da garantia e suporte técnico oficial deste dispositivo Apple.
+        </p>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="apple-serial-input">Número de Série para Consulta</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="apple-serial-input" value="${serial}" readonly style="flex: 1; font-family: monospace; font-weight: bold; background: var(--bg-secondary);">
+            <button type="button" class="btn btn-secondary" id="btn-copy-serial" style="padding: 0 16px;">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+          <button type="button" class="btn btn-primary w-100" id="btn-run-apple-check" style="justify-content: center; width: 100%; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            🍎 Consultar Garantia e Ativação
+          </button>
+          
+          <button type="button" class="btn btn-secondary w-100" id="btn-apple-link" style="justify-content: center; width: 100%; display: flex; align-items: center; gap: 6px;">
+            🔗 Abrir Site Oficial de Cobertura Apple
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </button>
+        </div>
+
+        <div id="apple-coverage-result" style="border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 18px; min-height: 80px; display: flex; align-items: center; justify-content: center; background: var(--bg-primary);">
+          <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+            Aguardando início da consulta...
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+      </div>
+    `;
+
+    window.app.showModal(modalTitle, content);
+
+    document.getElementById('btn-copy-serial').addEventListener('click', () => {
+      navigator.clipboard.writeText(serial);
+      window.app.showToast(`Número de série ${serial} copiado!`, 'success');
+    });
+
+    document.getElementById('btn-apple-link').addEventListener('click', () => {
+      navigator.clipboard.writeText(serial);
+      window.app.showToast(`Número de série ${serial} copiado! Redirecionando para o site de suporte da Apple...`, 'info');
+      setTimeout(() => {
+        window.open('https://checkcoverage.apple.com/?locale=pt_BR', '_blank');
+      }, 800);
+    });
+
+    document.getElementById('btn-run-apple-check').addEventListener('click', async () => {
+      const resultDiv = document.getElementById('apple-coverage-result');
+      
+      if (!document.getElementById('spinner-style')) {
+        const style = document.createElement('style');
+        style.id = 'spinner-style';
+        style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+      }
+
+      resultDiv.innerHTML = `
+        <div style="text-align: center; width: 100%; padding: 12px 0;">
+          <div class="spinner" style="margin: 0 auto 12px auto; width: 30px; height: 30px; border: 3px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+          <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Consultando servidores Apple...</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Verificando cobertura de garantia para: <strong>${serial}</strong></div>
+        </div>
+      `;
+
+      try {
+        const res = await fetch(`/api/apple/coverage?serial=${encodeURIComponent(serial)}`, {
+          headers: {
+            'Authorization': `Bearer ${window.api.getToken()}`
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro na consulta de garantia Apple');
+
+        if (!data.valid) {
+          resultDiv.innerHTML = `
+            <div style="width: 100%;">
+              <div style="display: flex; align-items: center; gap: 8px; color: var(--danger); font-weight: 700; font-size: 16px; margin-bottom: 12px;">
+                <span>❌ DISPOSITIVO NÃO ELEGÍVEL</span>
+              </div>
+              <p style="font-size: 14px; line-height: 1.5; color: var(--text-primary);">
+                ${data.info}
+              </p>
+            </div>
+          `;
+          return;
+        }
+
+        const actBadge = data.activated 
+          ? \`<span class="badge badge-success" style="font-size: 11px;">Ativado</span>\` 
+          : \`<span class="badge badge-warning" style="font-size: 11px;">Não Ativado</span>\`;
+
+        const warBadge = data.warrantyActive 
+          ? \`<span class="badge badge-success" style="font-size: 11px;">Ativa</span>\` 
+          : \`<span class="badge badge-danger" style="font-size: 11px;">Expirada</span>\`;
+
+        const supBadge = data.supportActive 
+          ? \`<span class="badge badge-success" style="font-size: 11px;">Ativo</span>\` 
+          : \`<span class="badge badge-danger" style="font-size: 11px;">Expirado</span>\`;
+
+        resultDiv.innerHTML = \`
+          <div style="width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 14px;">
+              <span style="font-size: 36px;">\${data.image || '📱'}</span>
+              <div>
+                <h4 style="font-weight: 700; margin: 0; font-size: 16px; color: var(--text-primary);">\${data.brand} \${data.model}</h4>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-secondary); font-family: monospace;">S/N: \${data.serial}</p>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-secondary);">\${data.color || ''} | \${data.capacity || ''}</p>
+              </div>
+            </div>
+
+            <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Status de Ativação:</td>
+                <td style="padding: 8px 0; text-align: right;">\${actBadge}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Data da Compra:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 500;">\${data.purchaseDate}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Suporte Telefônico:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 500;">
+                  \${supBadge}
+                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Vence em: \${data.supportEndDate}</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Cobertura de Reparos (Garantia):</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 500;">
+                  \${warBadge}
+                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Vence em: \${data.warrantyEndDate}</div>
+                </td>
+              </tr>
+            </table>
+
+            <div style="background: rgba(var(--primary-rgb, 59, 130, 246), 0.08); border-left: 4px solid var(--primary); padding: 10px; margin-top: 16px; font-size: 11px; border-radius: 4px; color: var(--text-secondary); line-height: 1.4;">
+              💡 <strong>Dica:</strong> Se precisar de cobertura oficial detalhada ou assistência direta, você pode abrir o site oficial de cobertura e colar o número de série pré-copiado.
+            </div>
+            <div style="font-size: 9px; color: var(--text-secondary); text-align: center; margin-top: 10px; font-style: italic;">
+              \${data.info}
+            </div>
+          </div>
+        \`;
+      } catch (err) {
+        resultDiv.innerHTML = \`
+          <div style="text-align: center; color: var(--danger); font-size: 14px; padding: 12px 0;">
+            ❌ Erro ao consultar cobertura: \${err.message}
+          </div>
+        \`;
       }
     });
   },

@@ -4,7 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
-
+const appleCoverage = require('./server/routes/appleCoverage');
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 const DB_FILE = path.join(__dirname, 'db.sqlite3');
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -14,6 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(PUBLIC_DIR));
+app.use('/api/apple', appleCoverage);
 
 // DB helper
 const db = new sqlite3.Database(DB_FILE);
