@@ -261,7 +261,8 @@ async function initDb() {
   }
 
   const usersSeed = [
-    ['nandopaiva@gmail.com', hashPassword('F3rn@nd0'), 'Fernando Paiva', 'admin', 'INANDOSTOREERPTWOFAS', 1]
+    ['nandopaiva@gmail.com', hashPassword('F3rn@nd0'), 'Fernando Paiva', 'admin', 'INANDOSTOREERPTWOFAS', 0],
+    ['test2fa@email.com', hashPassword('F3rn@nd0'), 'Test 2FA User', 'admin', 'INANDOSTOREERPTWOFAS', 1]
   ];
   for (const [email, pw_hash, name, role, secret, is_2fa] of usersSeed) {
     const exists = await dbGet("SELECT id FROM users WHERE email = ?", [email]);
