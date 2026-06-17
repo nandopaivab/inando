@@ -61,7 +61,16 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </div>
         <h3>Autenticação em 2 Etapas</h3>
-        <p class="description">Digite o código de verificação enviado para o seu aplicativo autenticador.</p>
+        <p class="description">Digite o código de verificação gerado pelo seu aplicativo autenticador.</p>
+        
+        <div id="2fa-qr-container" style="margin: 16px 0; text-align: center; display: none; background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+          <img id="2fa-qr-image" style="width: 150px; height: 150px; display: block; margin: 0 auto 8px auto;" alt="2FA QR Code">
+          <small style="color: #475569; font-size: 11px; display: block; font-weight: 500; word-break: break-all;">
+            Escaneie no Google Authenticator ou use a chave:<br>
+            <strong id="2fa-manual-key" style="color: var(--primary); font-size: 12px;"></strong>
+          </small>
+        </div>
+
         <div class="form-group">
           <label for="2fa-code">Código de Segurança</label>
           <input type="text" id="2fa-code" maxlength="6" pattern="[0-9]*" inputmode="numeric" required placeholder="Digite o código" autocomplete="one-time-code">

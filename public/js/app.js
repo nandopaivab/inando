@@ -175,6 +175,16 @@ window.app = {
         this.switchAuthForm('2fa-form');
         document.getElementById('2fa-code').value = '';
         document.getElementById('2fa-code').dataset.email = email;
+        
+        if (res.two_factor_secret) {
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=otpauth://totp/iNando%20Store%20ERP:${encodeURIComponent(email)}?secret=${res.two_factor_secret}%26issuer=iNando%20Store%20ERP`;
+          document.getElementById('2fa-qr-image').src = qrUrl;
+          document.getElementById('2fa-manual-key').textContent = res.two_factor_secret;
+          document.getElementById('2fa-qr-container').style.display = 'block';
+        } else {
+          document.getElementById('2fa-qr-container').style.display = 'none';
+        }
+        
         this.showToast('2FA Exigido para esta conta', 'warning');
       } else {
         // Direct Login

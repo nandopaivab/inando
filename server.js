@@ -50,6 +50,56 @@ function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+function decodeBase32(str) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  str = str.replace(/=+$/, '').toUpperCase();
+  let val = 0;
+  let count = 0;
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    const idx = alphabet.indexOf(str[i]);
+    if (idx === -1) continue; // skip padding or invalid characters safely
+    val = (val << 5) | idx;
+    count += 5;
+    if (count >= 8) {
+      bytes.push((val >>> (count - 8)) & 255);
+      count -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function verifyTOTP(token, secret, window = 2) {
+  if (!token || !secret) return false;
+  const cleanToken = token.trim();
+  if (cleanToken.length !== 6 || !/^\d+$/.test(cleanToken)) return false;
+
+  const now = Date.now();
+  const step = 30;
+  const key = decodeBase32(secret);
+
+  for (let i = -window; i <= window; i++) {
+    const counter = Math.floor(now / 1000 / step) + i;
+    const buf = Buffer.alloc(8);
+    buf.writeUInt32BE(0, 0);
+    buf.writeUInt32BE(counter, 4);
+
+    const hmac = crypto.createHmac('sha1', key);
+    hmac.update(buf);
+    const hmacResult = hmac.digest();
+
+    const offset = hmacResult[hmacResult.length - 1] & 0xf;
+    const code = ((hmacResult[offset] & 0x7f) << 24) |
+                 ((hmacResult[offset + 1] & 0xff) << 16) |
+                 ((hmacResult[offset + 2] & 0xff) << 8) |
+                 (hmacResult[offset + 3] & 0xff);
+
+    const generated = String(code % 1000000).padStart(6, '0');
+    if (generated === cleanToken) return true;
+  }
+  return false;
+}
+
 // Database schema initialization
 async function initDb() {
   await dbRun("PRAGMA foreign_keys = ON");
@@ -211,13 +261,18 @@ async function initDb() {
   }
 
   const usersSeed = [
-    ['nandopaiva@gmail.com', hashPassword('F3rn@nd0'), 'Fernando Paiva', 'admin', 'XYZ123ABC', 1]
+    ['nandopaiva@gmail.com', hashPassword('F3rn@nd0'), 'Fernando Paiva', 'admin', 'INANDOSTOREERPTWOFAS', 1]
   ];
   for (const [email, pw_hash, name, role, secret, is_2fa] of usersSeed) {
-    await dbRun(`
-      INSERT OR IGNORE INTO users (email, password_hash, name, role, two_factor_secret, two_factor_enabled)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [email, pw_hash, name, role, secret, is_2fa]);
+    const exists = await dbGet("SELECT id FROM users WHERE email = ?", [email]);
+    if (exists) {
+      await dbRun("UPDATE users SET two_factor_secret = ?, two_factor_enabled = ? WHERE email = ?", [secret, is_2fa, email]);
+    } else {
+      await dbRun(`
+        INSERT INTO users (email, password_hash, name, role, two_factor_secret, two_factor_enabled)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [email, pw_hash, name, role, secret, is_2fa]);
+    }
   }
 
   const prodCount = await dbGet("SELECT COUNT(*) as count FROM products");
@@ -300,6 +355,7 @@ app.post('/api/login', async (req, res) => {
       return res.json({
         two_factor_required: true,
         email: email,
+        two_factor_secret: user.two_factor_secret,
         temp_user_id: user.id
       });
     }
@@ -329,7 +385,9 @@ app.post('/api/verify-2fa', async (req, res) => {
   const { email, code } = req.body;
   const user = await dbGet("SELECT * FROM users WHERE email = ? AND is_active = 1", [email]);
   
-  if (user && user.two_factor_enabled && code === '123456') {
+  const isValidTotp = user && user.two_factor_enabled && (code === '123456' || verifyTOTP(code, user.two_factor_secret));
+  
+  if (isValidTotp) {
     const token = crypto.randomUUID();
     const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
     
@@ -347,7 +405,7 @@ app.post('/api/verify-2fa', async (req, res) => {
       }
     });
   } else {
-    res.status(401).json({ error: 'Codigo 2FA incorreto. Use 123456' });
+    res.status(401).json({ error: 'Código 2FA incorreto ou expirado. Verifique no app Google Authenticator ou use 123456 para testes.' });
   }
 });
 
