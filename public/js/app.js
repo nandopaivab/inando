@@ -26,17 +26,45 @@ window.app = {
     document.getElementById('login-form').addEventListener('submit', (e) => this.handleLogin(e));
     document.getElementById('recovery-form').addEventListener('submit', (e) => this.handleRecovery(e));
 
+    // Mobile Sidebar toggle
+    const toggleSidebarBtn = document.getElementById('btn-toggle-sidebar');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    const toggleSidebar = () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    };
+    
+    if (toggleSidebarBtn) {
+      toggleSidebarBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSidebar();
+      });
+    }
+    if (overlay) {
+      overlay.addEventListener('click', toggleSidebar);
+    }
+
     // Sidebar navigation clicks
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
         const view = item.getAttribute('data-view');
         this.navigateTo(view);
+        if (sidebar && sidebar.classList.contains('open')) {
+          toggleSidebar();
+        }
       });
     });
 
     // Logout click
-    document.getElementById('btn-logout').addEventListener('click', () => this.handleLogout());
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      this.handleLogout();
+      if (sidebar && sidebar.classList.contains('open')) {
+        toggleSidebar();
+      }
+    });
 
     // Theme toggler click
     document.getElementById('btn-theme-toggle').addEventListener('click', () => this.toggleTheme());

@@ -1089,24 +1089,83 @@ tr:hover td {
   }
 }
 
+/* Mobile toggle button */
+.btn-menu {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
+  .btn-menu {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
   .app-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   .sidebar {
-    display: none; /* Mobile navigation would use a toggle, but for simplicity of SPA we support desktop/tablet optimally */
+    position: fixed !important;
+    top: 0;
+    left: -260px;
+    width: 260px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex !important;
   }
+  .sidebar.open {
+    left: 0;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+  }
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    display: none;
+    transition: opacity 0.3s ease;
+  }
+  .sidebar-overlay.active {
+    display: block;
+  }
+  
+  .workspace {
+    padding: 16px !important;
+    width: 100% !important;
+    overflow-x: hidden;
+  }
+  
+  .workspace-header {
+    padding: 12px 0 !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+  }
+  
   .pos-layout {
-    grid-template-columns: 1fr;
-    height: auto;
+    grid-template-columns: 1fr !important;
+    height: auto !important;
   }
   .form-grid-2, .form-grid-3 {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   .dashboard-columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }

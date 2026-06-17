@@ -73,6 +73,7 @@
 
   <!-- Main System App Layout -->
   <div id="app-layout" class="app-layout hidden">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -145,9 +146,14 @@
     <div class="workspace">
       <!-- Workspace Header -->
       <header class="workspace-header">
-        <div class="header-left">
-          <h2 id="view-title">Dashboard</h2>
-          <p id="view-subtitle" class="text-muted">Visão geral administrativa do ERP</p>
+        <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
+          <button id="btn-toggle-sidebar" class="btn btn-icon btn-menu" style="display: none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div>
+            <h2 id="view-title">Dashboard</h2>
+            <p id="view-subtitle" class="text-muted">Visão geral administrativa do ERP</p>
+          </div>
         </div>
 
         <div class="header-right">
