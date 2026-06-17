@@ -201,7 +201,7 @@ window.views.sales = {
     manualSelect.addEventListener('change', () => {
       const id = parseInt(manualSelect.value);
       if (id) {
-        const p = this.availableProducts.find(prod => prod.id === id);
+        const p = this.availableProducts.find(prod => Number(prod.id) === Number(id));
         if (p) {
           this.addToCart(p);
           manualSelect.value = '';
@@ -249,7 +249,7 @@ window.views.sales = {
 
   addToCart(product) {
     // Check if product is already in cart
-    if (this.cart.some(item => item.id === product.id)) {
+    if (this.cart.some(item => Number(item.id) === Number(product.id))) {
       window.app.showToast('Aparelho ja inserido no carrinho', 'warning');
       return;
     }
@@ -259,7 +259,7 @@ window.views.sales = {
   },
 
   removeFromCart(id) {
-    this.cart = this.cart.filter(item => item.id !== id);
+    this.cart = this.cart.filter(item => Number(item.id) !== Number(id));
     this.renderCart();
     this.updateTotals();
   },
