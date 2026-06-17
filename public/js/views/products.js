@@ -643,7 +643,7 @@ window.views.products = {
       try {
         const res = await fetch(`/api/imei-check/${imei}`, {
           headers: {
-            'Authorization': `Bearer ${window.app.token}`
+            'Authorization': `Bearer ${window.api.getToken()}`
           }
         });
         const data = await res.json();
