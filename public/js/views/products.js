@@ -32,6 +32,10 @@ window.views.products = {
             <option value="reservado">Reservado</option>
           </select>
 
+          <button id="btn-apple-coverage-manual" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px;">
+            🍎 Garantia Apple
+          </button>
+
           ${canManage || isSeller ? `<button id="btn-add-product" class="btn btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Novo Produto
@@ -71,6 +75,11 @@ window.views.products = {
     const addBtn = document.getElementById('btn-add-product');
     if (addBtn) {
       addBtn.addEventListener('click', () => this.showProductModal());
+    }
+
+    const appleBtn = document.getElementById('btn-apple-coverage-manual');
+    if (appleBtn) {
+      appleBtn.addEventListener('click', () => this.showAppleCoverageModal());
     }
 
     await this.loadProducts();
@@ -709,23 +718,25 @@ window.views.products = {
     });
   },
 
-  showAppleCoverageModal(id) {
-    const prod = this.products.find(p => p.id === id);
-    if (!prod || !prod.serial_number) return;
+  showAppleCoverageModal(id = null) {
+    const prod = id ? this.products.find(p => p.id === id) : null;
+    const isManual = !prod;
+    const serial = prod ? (prod.serial_number || '') : '';
 
-    const modalTitle = `Consulta de Garantia Apple: ${prod.brand} ${prod.model}`;
-    const serial = prod.serial_number;
+    const modalTitle = isManual 
+      ? 'Consulta de Garantia Apple' 
+      : `Consulta de Garantia Apple: ${prod.brand} ${prod.model}`;
 
     const content = `
       <div id="apple-coverage-container" style="padding: 10px 0;">
         <p style="font-size: 14px; margin-bottom: 16px; color: var(--text-secondary);">
-          Consulte o status de ativação, validade da garantia e suporte técnico oficial deste dispositivo Apple.
+          Consulte o status de ativação, validade da garantia e suporte técnico oficial de qualquer dispositivo Apple.
         </p>
 
         <div class="form-group" style="margin-bottom: 20px;">
           <label for="apple-serial-input">Número de Série para Consulta</label>
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="apple-serial-input" value="${serial}" readonly style="flex: 1; font-family: monospace; font-weight: bold; background: var(--bg-secondary);">
+            <input type="text" id="apple-serial-input" value="${serial}" ${prod ? 'readonly style="flex: 1; font-family: monospace; font-weight: bold; background: var(--bg-secondary); text-transform: uppercase;"' : 'placeholder="Digite o serial number da Apple (Ex: DX3FL8X...)" style="flex: 1; font-family: monospace; font-weight: bold; text-transform: uppercase;"'}>
             <button type="button" class="btn btn-secondary" id="btn-copy-serial" style="padding: 0 16px;">📋 Copiar</button>
           </div>
         </div>
@@ -754,20 +765,38 @@ window.views.products = {
 
     window.app.showModal(modalTitle, content);
 
+    const getSerialValue = () => document.getElementById('apple-serial-input').value.trim();
+
     document.getElementById('btn-copy-serial').addEventListener('click', () => {
-      navigator.clipboard.writeText(serial);
-      window.app.showToast(`Número de série ${serial} copiado!`, 'success');
+      const serialVal = getSerialValue();
+      if (!serialVal) {
+        window.app.showToast('Digite um número de série primeiro!', 'warning');
+        return;
+      }
+      navigator.clipboard.writeText(serialVal);
+      window.app.showToast(`Número de série ${serialVal} copiado!`, 'success');
     });
 
     document.getElementById('btn-apple-link').addEventListener('click', () => {
-      navigator.clipboard.writeText(serial);
-      window.app.showToast(`Número de série ${serial} copiado! Redirecionando para o site de suporte da Apple...`, 'info');
+      const serialVal = getSerialValue();
+      if (!serialVal) {
+        window.app.showToast('Direcionando para o site de suporte da Apple...', 'info');
+      } else {
+        navigator.clipboard.writeText(serialVal);
+        window.app.showToast(`Número de série ${serialVal} copiado! Redirecionando para o site de suporte da Apple...`, 'info');
+      }
       setTimeout(() => {
         window.open('https://checkcoverage.apple.com/?locale=pt_BR', '_blank');
       }, 800);
     });
 
     document.getElementById('btn-run-apple-check').addEventListener('click', async () => {
+      const serialVal = getSerialValue();
+      if (!serialVal) {
+        window.app.showToast('Por favor, informe o número de série!', 'warning');
+        return;
+      }
+
       const resultDiv = document.getElementById('apple-coverage-result');
       
       if (!document.getElementById('spinner-style')) {
@@ -781,12 +810,12 @@ window.views.products = {
         <div style="text-align: center; width: 100%; padding: 12px 0;">
           <div class="spinner" style="margin: 0 auto 12px auto; width: 30px; height: 30px; border: 3px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
           <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Consultando servidores Apple...</div>
-          <div style="font-size: 12px; color: var(--text-secondary);">Verificando cobertura de garantia para: <strong>${serial}</strong></div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Verificando cobertura de garantia para: <strong>${serialVal}</strong></div>
         </div>
       `;
 
       try {
-        const res = await fetch(`/api/apple/coverage?serial=${encodeURIComponent(serial)}`, {
+        const res = await fetch(`/api/apple/coverage?serial=${encodeURIComponent(serialVal)}`, {
           headers: {
             'Authorization': `Bearer ${window.api.getToken()}`
           }
