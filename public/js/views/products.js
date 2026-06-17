@@ -809,49 +809,49 @@ window.views.products = {
         }
 
         const actBadge = data.activated 
-          ? \`<span class="badge badge-success" style="font-size: 11px;">Ativado</span>\` 
-          : \`<span class="badge badge-warning" style="font-size: 11px;">Não Ativado</span>\`;
+          ? `<span class="badge badge-success" style="font-size: 11px;">Ativado</span>` 
+          : `<span class="badge badge-warning" style="font-size: 11px;">Não Ativado</span>`;
 
         const warBadge = data.warrantyActive 
-          ? \`<span class="badge badge-success" style="font-size: 11px;">Ativa</span>\` 
-          : \`<span class="badge badge-danger" style="font-size: 11px;">Expirada</span>\`;
+          ? `<span class="badge badge-success" style="font-size: 11px;">Ativa</span>` 
+          : `<span class="badge badge-danger" style="font-size: 11px;">Expirada</span>`;
 
         const supBadge = data.supportActive 
-          ? \`<span class="badge badge-success" style="font-size: 11px;">Ativo</span>\` 
-          : \`<span class="badge badge-danger" style="font-size: 11px;">Expirado</span>\`;
+          ? `<span class="badge badge-success" style="font-size: 11px;">Ativo</span>` 
+          : `<span class="badge badge-danger" style="font-size: 11px;">Expirado</span>`;
 
-        resultDiv.innerHTML = \`
+        resultDiv.innerHTML = `
           <div style="width: 100%;">
             <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 14px;">
-              <span style="font-size: 36px;">\${data.image || '📱'}</span>
+              <span style="font-size: 36px;">${data.image || '📱'}</span>
               <div>
-                <h4 style="font-weight: 700; margin: 0; font-size: 16px; color: var(--text-primary);">\${data.brand} \${data.model}</h4>
-                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-secondary); font-family: monospace;">S/N: \${data.serial}</p>
-                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-secondary);">\${data.color || ''} | \${data.capacity || ''}</p>
+                <h4 style="font-weight: 700; margin: 0; font-size: 16px; color: var(--text-primary);">${data.brand} ${data.model}</h4>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-secondary); font-family: monospace;">S/N: ${data.serial}</p>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-secondary);">${data.color || ''} | ${data.capacity || ''}</p>
               </div>
             </div>
 
             <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
               <tr style="border-bottom: 1px solid var(--border-color);">
                 <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Status de Ativação:</td>
-                <td style="padding: 8px 0; text-align: right;">\${actBadge}</td>
+                <td style="padding: 8px 0; text-align: right;">${actBadge}</td>
               </tr>
               <tr style="border-bottom: 1px solid var(--border-color);">
                 <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Data da Compra:</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: 500;">\${data.purchaseDate}</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 500;">${data.purchaseDate}</td>
               </tr>
               <tr style="border-bottom: 1px solid var(--border-color);">
                 <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Suporte Telefônico:</td>
                 <td style="padding: 8px 0; text-align: right; font-weight: 500;">
-                  \${supBadge}
-                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Vence em: \${data.supportEndDate}</div>
+                  ${supBadge}
+                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Vence em: ${data.supportEndDate}</div>
                 </td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; color: var(--text-secondary);">Cobertura de Reparos (Garantia):</td>
                 <td style="padding: 8px 0; text-align: right; font-weight: 500;">
-                  \${warBadge}
-                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Vence em: \${data.warrantyEndDate}</div>
+                  ${warBadge}
+                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Vence em: ${data.warrantyEndDate}</div>
                 </td>
               </tr>
             </table>
@@ -860,16 +860,16 @@ window.views.products = {
               💡 <strong>Dica:</strong> Se precisar de cobertura oficial detalhada ou assistência direta, você pode abrir o site oficial de cobertura e colar o número de série pré-copiado.
             </div>
             <div style="font-size: 9px; color: var(--text-secondary); text-align: center; margin-top: 10px; font-style: italic;">
-              \${data.info}
+              ${data.info}
             </div>
           </div>
-        \`;
+        `;
       } catch (err) {
-        resultDiv.innerHTML = \`
+        resultDiv.innerHTML = `
           <div style="text-align: center; color: var(--danger); font-size: 14px; padding: 12px 0;">
-            ❌ Erro ao consultar cobertura: \${err.message}
+            ❌ Erro ao consultar cobertura: ${err.message}
           </div>
-        \`;
+        `;
       }
     });
   },
