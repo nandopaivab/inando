@@ -310,31 +310,36 @@ window.views.sales = {
   },
 
   async checkout() {
-    if (this.cart.length === 0) {
-      window.app.showToast('Carrinho de compras vazio.', 'warning');
-      return;
-    }
+    try {
+      if (this.cart.length === 0) {
+        window.app.showToast('Carrinho de compras vazio.', 'warning');
+        return;
+      }
 
-    const clientIdVal = document.getElementById('pos-client-select').value;
-    const payMethod = document.getElementById('pos-payment').value;
-    const disc = parseFloat(document.getElementById('pos-discount').value) || 0;
-    const inst = parseInt(document.getElementById('pos-installments').value) || 1;
+      const clientIdVal = document.getElementById('pos-client-select').value;
+      const payMethod = document.getElementById('pos-payment').value;
+      const disc = parseFloat(document.getElementById('pos-discount').value) || 0;
+      const inst = parseInt(document.getElementById('pos-installments').value) || 1;
 
-    const payload = {
-      client_id: clientIdVal ? parseInt(clientIdVal) : null,
-      product_ids: this.cart.map(p => p.id),
-      discount: disc,
-      payment_method: payMethod,
-      installments: inst
-    };
+      const payload = {
+        client_id: clientIdVal ? parseInt(clientIdVal) : null,
+        product_ids: this.cart.map(p => p.id),
+        discount: disc,
+        payment_method: payMethod,
+        installments: inst
+      };
 
-    // If Pix, show simulated Pix QR Code checkout modal first
-    if (payMethod === 'PIX') {
-      this.showPixModal(payload);
-    } else if (payMethod === 'Misto') {
-      this.showMixedPaymentModal(payload);
-    } else {
-      this.executeCheckout(payload);
+      // If Pix, show simulated Pix QR Code checkout modal first
+      if (payMethod === 'PIX') {
+        this.showPixModal(payload);
+      } else if (payMethod === 'Misto') {
+        this.showMixedPaymentModal(payload);
+      } else {
+        this.executeCheckout(payload);
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      window.app.showToast(`Erro ao iniciar checkout: ${err.message}`, 'danger');
     }
   },
 
