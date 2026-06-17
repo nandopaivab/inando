@@ -87,23 +87,31 @@ async function initDb() {
   `);
 
   await dbRun(`
-    CREATE TABLE IF NOT EXISTS products (
+    CREATE TABLE IF NOT EXISTS product_models (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       brand TEXT NOT NULL,
       model TEXT NOT NULL,
       category TEXT CHECK(category IN ('celular', 'tablet', 'smartwatch', 'acessorios')) NOT NULL,
-      imei_1 TEXT UNIQUE,
-      imei_2 TEXT UNIQUE,
-      serial_number TEXT UNIQUE,
       color TEXT NOT NULL,
       capacity TEXT NOT NULL,
       ram TEXT NOT NULL,
+      min_stock_alert INTEGER DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      model_id INTEGER REFERENCES product_models(id) ON DELETE CASCADE,
+      imei_1 TEXT UNIQUE,
+      imei_2 TEXT UNIQUE,
+      serial_number TEXT UNIQUE,
       state TEXT CHECK(state IN ('novo', 'seminovo', 'usado', 'recondicionado')) NOT NULL,
       purchase_date TEXT,
       supplier TEXT,
       purchase_price REAL NOT NULL,
       selling_price REAL NOT NULL,
-      min_stock_alert INTEGER DEFAULT 1,
       commission_percent REAL DEFAULT 0.0,
       images TEXT,
       qr_code TEXT,
@@ -397,18 +405,19 @@ app.get('/api/dashboard', authMiddleware, async (req, res) => {
   const net_profit_month = revenue_month - cogs_month - expenses_month;
 
   const low_stock = await dbAll(`
-    SELECT brand, model, category, COUNT(*) as stock_count, min_stock_alert 
-    FROM products 
-    WHERE status = 'disponivel'
-    GROUP BY brand, model, category
-    HAVING stock_count <= min_stock_alert
+    SELECT pm.brand, pm.model, pm.category, COUNT(p.id) as stock_count, pm.min_stock_alert 
+    FROM product_models pm
+    LEFT JOIN products p ON p.model_id = pm.id AND p.status = 'disponivel'
+    GROUP BY pm.id
+    HAVING stock_count <= pm.min_stock_alert
   `);
 
   const best_sellers = await dbAll(`
-    SELECT p.brand, p.model, p.category, COUNT(*) as qty, SUM(si.selling_price) as faturamento
+    SELECT pm.brand, pm.model, pm.category, COUNT(*) as qty, SUM(si.selling_price) as faturamento
     FROM sale_items si
     JOIN products p ON si.product_id = p.id
-    GROUP BY p.brand, p.model
+    JOIN product_models pm ON p.model_id = pm.id
+    GROUP BY pm.id
     ORDER BY qty DESC LIMIT 5
   `);
 
@@ -429,67 +438,137 @@ app.get('/api/dashboard', authMiddleware, async (req, res) => {
   });
 });
 
-// Products routes
+// Listar todos os modelos cadastrados no banco
+app.get('/api/product-models', authMiddleware, async (req, res) => {
+  const models = await dbAll("SELECT * FROM product_models ORDER BY brand, model");
+  res.json(models);
+});
+
+// Criar um novo modelo de aparelho
+app.post('/api/product-models', authMiddleware, async (req, res) => {
+  if (['seller'].includes(req.user.role)) return res.status(403).json({ error: 'Acesso negado' });
+  const { brand, model, category, color, capacity, ram, min_stock_alert } = req.body;
+  if (!brand || !model || !category) {
+    return res.status(400).json({ error: 'Dados obrigatorios ausentes' });
+  }
+  try {
+    await dbRun(`
+      INSERT INTO product_models (brand, model, category, color, capacity, ram, min_stock_alert)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [brand, model, category, color || 'N/A', capacity || 'N/A', ram || 'N/A', parseInt(min_stock_alert || 1)]);
+    
+    const lastRow = await dbGet("SELECT last_insert_rowid() as id");
+    const newModel = await dbGet("SELECT * FROM product_models WHERE id = ?", [lastRow.id]);
+    res.status(201).json(newModel);
+  } catch (err) {
+    res.status(400).json({ error: 'Erro ao criar modelo' });
+  }
+});
+
+// Products routes (Aparelhos Fisicos)
 app.get('/api/products', authMiddleware, async (req, res) => {
   const { q, status, category } = req.query;
-  let sql = "SELECT * FROM products WHERE 1=1";
+  let sql = `
+    SELECT p.*, pm.brand, pm.model, pm.category, pm.color, pm.capacity, pm.ram, pm.min_stock_alert
+    FROM products p
+    JOIN product_models pm ON p.model_id = pm.id
+    WHERE 1=1
+  `;
   const params = [];
 
   if (q) {
-    sql += " AND (brand LIKE ? OR model LIKE ? OR imei_1 LIKE ? OR imei_2 LIKE ? OR serial_number LIKE ?)";
+    sql += " AND (pm.brand LIKE ? OR pm.model LIKE ? OR p.imei_1 LIKE ? OR p.imei_2 LIKE ? OR p.serial_number LIKE ?)";
     params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
   }
   if (status) {
-    sql += " AND status = ?";
+    sql += " AND p.status = ?";
     params.push(status);
   }
   if (category) {
-    sql += " AND category = ?";
+    sql += " AND pm.category = ?";
     params.push(category);
   }
   
-  sql += " ORDER BY id DESC";
+  sql += " ORDER BY p.id DESC";
   const prods = await dbAll(sql, params);
   res.json(prods);
 });
 
 app.get('/api/products/:id', authMiddleware, async (req, res) => {
-  const p = await dbGet("SELECT * FROM products WHERE id = ?", [req.params.id]);
+  const p = await dbGet(`
+    SELECT p.*, pm.brand, pm.model, pm.category, pm.color, pm.capacity, pm.ram, pm.min_stock_alert
+    FROM products p
+    JOIN product_models pm ON p.model_id = pm.id
+    WHERE p.id = ?
+  `, [req.params.id]);
   if (p) res.json(p);
   else res.status(404).json({ error: 'Produto nao encontrado' });
 });
 
 app.post('/api/products', authMiddleware, async (req, res) => {
-  if (['seller'].includes(req.user.role)) {
-    // Sellers can create products depending on setting, but verify role here
-  }
-  const { brand, model, category, purchase_price, selling_price, imei_1, imei_2, serial_number, color, capacity, ram, state, supplier, purchase_date, commission_percent, images, qr_code } = req.body;
-  if (!brand || !model || !category || !purchase_price || !selling_price) {
+  if (['seller'].includes(req.user.role)) return res.status(403).json({ error: 'Acesso negado' });
+  
+  const { 
+    model_id, brand, model, category, color, capacity, ram, min_stock_alert,
+    purchase_price, selling_price, imei_1, imei_2, serial_number, state, supplier, purchase_date, commission_percent, images, qr_code 
+  } = req.body;
+
+  if (!purchase_price || !selling_price) {
     return res.status(400).json({ error: 'Dados obrigatorios ausentes' });
   }
 
-  const qr_val = qr_code || `PROD-${brand.slice(0,2).toUpperCase()}-${model.slice(0,2).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+  let finalModelId = model_id;
 
   try {
+    // Se nao enviou model_id, cria ou procura um modelo correspondente
+    if (!finalModelId) {
+      if (!brand || !model || !category) {
+        return res.status(400).json({ error: 'Dados do modelo obrigatorios' });
+      }
+      
+      let existingModel = await dbGet(
+        "SELECT id FROM product_models WHERE brand = ? AND model = ? AND capacity = ? AND color = ?", 
+        [brand, model, capacity || 'N/A', color || 'N/A']
+      );
+
+      if (existingModel) {
+        finalModelId = existingModel.id;
+      } else {
+        await dbRun(`
+          INSERT INTO product_models (brand, model, category, color, capacity, ram, min_stock_alert)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [brand, model, category, color || 'N/A', capacity || 'N/A', ram || 'N/A', parseInt(min_stock_alert || 1)]);
+        const lastM = await dbGet("SELECT last_insert_rowid() as id");
+        finalModelId = lastM.id;
+      }
+    }
+
+    const qr_val = qr_code || `PROD-MODEL-${finalModelId}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
     await dbRun(`
-      INSERT INTO products (brand, model, category, imei_1, imei_2, serial_number, color, capacity, ram, state, purchase_date, supplier, purchase_price, selling_price, min_stock_alert, commission_percent, images, qr_code, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'disponivel')
+      INSERT INTO products (model_id, imei_1, imei_2, serial_number, state, purchase_date, supplier, purchase_price, selling_price, commission_percent, images, qr_code, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'disponivel')
     `, [
-      brand, model, category, imei_1, imei_2, serial_number,
-      color || 'N/A', capacity || 'N/A', ram || 'N/A', state || 'novo',
-      purchase_date || new Date().toISOString().slice(0,10), supplier || 'N/A',
-      purchase_price, selling_price, parseInt(req.body.min_stock_alert || 1), parseFloat(commission_percent || 0.0),
+      finalModelId, imei_1 || null, imei_2 || null, serial_number || null,
+      state || 'novo', purchase_date || new Date().toISOString().slice(0,10), supplier || 'N/A',
+      purchase_price, selling_price, parseFloat(commission_percent || 0.0),
       JSON.stringify(images || []), qr_val
     ]);
     
     const lastRow = await dbGet("SELECT last_insert_rowid() as id");
     await dbRun("INSERT INTO stock_movements (product_id, type, quantity, user_id, notes) VALUES (?, 'entrada', 1, ?, ?)", [lastRow.id, req.user.id, 'Entrada por cadastro de produto']);
-    await logActivity(req.user.id, "product_create", `Cadastrou produto: ${brand} ${model}`);
+    await logActivity(req.user.id, "product_create", `Cadastrou item no estoque (Modelo ID: ${finalModelId})`);
 
-    const newProd = await dbGet("SELECT * FROM products WHERE id = ?", [lastRow.id]);
+    const newProd = await dbGet(`
+      SELECT p.*, pm.brand, pm.model, pm.category 
+      FROM products p 
+      JOIN product_models pm ON p.model_id = pm.id 
+      WHERE p.id = ?
+    `, [lastRow.id]);
     res.status(201).json(newProd);
   } catch (err) {
-    res.status(400).json({ error: 'IMEI ou Serial number duplicado.' });
+    console.error(err);
+    res.status(400).json({ error: 'IMEI ou Serial number duplicado ou erro ao salvar.' });
   }
 });
 
@@ -504,23 +583,29 @@ app.put('/api/products/:id', authMiddleware, async (req, res) => {
 
   const data = req.body;
   try {
+    // Atualiza o item fisico
     await dbRun(`
-      UPDATE products SET brand=?, model=?, category=?, imei_1=?, imei_2=?, serial_number=?, color=?, capacity=?, ram=?, state=?, purchase_price=?, selling_price=?, min_stock_alert=?, commission_percent=?, status=?
+      UPDATE products SET imei_1=?, imei_2=?, serial_number=?, state=?, purchase_price=?, selling_price=?, commission_percent=?, status=?
       WHERE id = ?
     `, [
-      data.brand || prod.brand, data.model || prod.model, data.category || prod.category,
       data.imei_1 !== undefined ? data.imei_1 : prod.imei_1,
       data.imei_2 !== undefined ? data.imei_2 : prod.imei_2,
       data.serial_number !== undefined ? data.serial_number : prod.serial_number,
-      data.color || prod.color, data.capacity || prod.capacity, data.ram || prod.ram,
-      data.state || prod.state, data.purchase_price !== undefined ? data.purchase_price : prod.purchase_price,
+      data.state || prod.state, 
+      data.purchase_price !== undefined ? data.purchase_price : prod.purchase_price,
       data.selling_price !== undefined ? data.selling_price : prod.selling_price,
-      parseInt(data.min_stock_alert || prod.min_stock_alert),
       parseFloat(data.commission_percent || prod.commission_percent),
       data.status || prod.status, req.params.id
     ]);
 
-    await logActivity(req.user.id, "product_update", `Editou produto ID: ${req.params.id}`);
+    // Se admin/manager enviou dados de modelo e model_id, atualiza o modelo tambem
+    if (data.model_id) {
+      await dbRun(`
+        UPDATE products SET model_id = ? WHERE id = ?
+      `, [data.model_id, req.params.id]);
+    }
+
+    await logActivity(req.user.id, "product_update", `Editou item físico ID: ${req.params.id}`);
     const updated = await dbGet("SELECT * FROM products WHERE id = ?", [req.params.id]);
     res.json(updated);
   } catch (err) {
@@ -531,7 +616,12 @@ app.put('/api/products/:id', authMiddleware, async (req, res) => {
 app.delete('/api/products/:id', authMiddleware, async (req, res) => {
   if (['seller'].includes(req.user.role)) return res.status(403).json({ error: 'Acesso negado' });
   
-  const prod = await dbGet("SELECT * FROM products WHERE id = ?", [req.params.id]);
+  const prod = await dbGet(`
+    SELECT p.*, pm.brand, pm.model 
+    FROM products p
+    JOIN product_models pm ON p.model_id = pm.id
+    WHERE p.id = ?
+  `, [req.params.id]);
   if (!prod) return res.status(404).json({ error: 'Produto nao encontrado' });
   if (prod.status === 'vendido') {
     return res.status(400).json({ error: 'Nao e possivel excluir produto vendido' });
@@ -545,9 +635,10 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
 // Stock Adjustments
 app.get('/api/stock/history', authMiddleware, async (req, res) => {
   const history = await dbAll(`
-    SELECT sm.*, p.brand, p.model, p.imei_1, p.serial_number, u.name as user_name 
+    SELECT sm.*, pm.brand, pm.model, p.imei_1, p.serial_number, u.name as user_name 
     FROM stock_movements sm
     JOIN products p ON sm.product_id = p.id
+    JOIN product_models pm ON p.model_id = pm.id
     LEFT JOIN users u ON sm.user_id = u.id
     ORDER BY sm.timestamp DESC
   `);
@@ -675,7 +766,12 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
   let subtotal = 0.0;
   const prods = [];
   for (const pid of product_ids) {
-    const p = await dbGet("SELECT * FROM products WHERE id = ?", [pid]);
+    const p = await dbGet(`
+      SELECT p.*, pm.brand, pm.model, pm.commission_percent
+      FROM products p
+      JOIN product_models pm ON p.model_id = pm.id
+      WHERE p.id = ?
+    `, [pid]);
     if (!p) return res.status(400).json({ error: `Produto ID ${pid} nao encontrado` });
     if (p.status !== 'disponivel') {
       return res.status(400).json({ error: `Produto ${p.brand} ${p.model} nao esta disponivel` });
@@ -756,9 +852,10 @@ app.get('/api/sales/:id', authMiddleware, async (req, res) => {
   if (!sale) return res.status(404).json({ error: 'Venda nao encontrada' });
 
   const items = await dbAll(`
-    SELECT si.*, p.brand, p.model, p.category, p.imei_1, p.serial_number, p.color, p.capacity
+    SELECT si.*, pm.brand, pm.model, pm.category, p.imei_1, p.serial_number, pm.color, pm.capacity
     FROM sale_items si
     JOIN products p ON si.product_id = p.id
+    JOIN product_models pm ON p.model_id = pm.id
     WHERE si.sale_id = ?
   `, [req.params.id]);
 

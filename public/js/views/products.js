@@ -175,21 +175,24 @@ window.views.products = {
 
     const content = `
       <form id="product-form">
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="prod-brand">Marca *</label>
-            <input type="text" id="prod-brand" required placeholder="Ex: Apple, Samsung" value="${prod ? prod.brand : ''}">
-          </div>
-          <div class="form-group">
-            <label for="prod-model">Modelo *</label>
-            <input type="text" id="prod-model" required placeholder="Ex: iPhone 14 Pro, Galaxy S23" value="${prod ? prod.model : ''}">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="prod-model-select">Selecione o Modelo do Aparelho *</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="prod-model-select" style="flex: 1;">
+              <option value="">-- Selecione ou clique ao lado para criar um modelo --</option>
+            </select>
+            <button type="button" class="btn btn-secondary" id="btn-new-model-modal" style="padding: 0 16px;">➕ Novo Modelo</button>
           </div>
         </div>
+
+        <!-- Hidden inputs that populate based on selected model -->
+        <input type="hidden" id="prod-brand" value="${prod ? prod.brand : ''}">
+        <input type="hidden" id="prod-model" value="${prod ? prod.model : ''}">
 
         <div class="form-grid-3">
           <div class="form-group">
             <label for="prod-category">Categoria *</label>
-            <select id="prod-category" required>
+            <select id="prod-category" disabled>
               <option value="celular" ${prod && prod.category === 'celular' ? 'selected' : ''}>Celular</option>
               <option value="tablet" ${prod && prod.category === 'tablet' ? 'selected' : ''}>Tablet</option>
               <option value="smartwatch" ${prod && prod.category === 'smartwatch' ? 'selected' : ''}>Smartwatch</option>
@@ -207,20 +210,20 @@ window.views.products = {
           </div>
           <div class="form-group">
             <label for="prod-color">Cor</label>
-            <input type="text" id="prod-color" placeholder="Ex: Space Black" value="${prod ? prod.color : ''}">
+            <input type="text" id="prod-color" placeholder="Ex: Space Black" disabled value="${prod ? prod.color : ''}">
           </div>
         </div>
 
         <div class="form-grid-3 hardware-specs">
           <div class="form-group">
             <label for="prod-capacity">Capacidade (Armazenamento)</label>
-            <input type="text" id="prod-capacity" placeholder="Ex: 128GB, 256GB" value="${prod ? prod.capacity : ''}">
+            <input type="text" id="prod-capacity" placeholder="Ex: 128GB, 256GB" disabled value="${prod ? prod.capacity : ''}">
           </div>
           <div class="form-group">
             <label for="prod-ram">Memória RAM</label>
-            <input type="text" id="prod-ram" placeholder="Ex: 6GB, 8GB" value="${prod ? prod.ram : ''}">
+            <input type="text" id="prod-ram" placeholder="Ex: 6GB, 8GB" disabled value="${prod ? prod.ram : ''}">
           </div>
-          <div class="form-group">
+          <div class="form-group" style="display:none;">
             <label for="prod-min-stock">Estoque Mínimo (Alerta)</label>
             <input type="number" id="prod-min-stock" min="1" value="${prod ? prod.min_stock_alert : 1}">
           </div>
@@ -328,6 +331,142 @@ window.views.products = {
 
     if (isEdit) updateMargin();
 
+    // Populate Models Select and bind handlers
+    const modelSelect = document.getElementById('prod-model-select');
+    const brandInput = document.getElementById('prod-brand');
+    const modelInput = document.getElementById('prod-model');
+    const capacityInput = document.getElementById('prod-capacity');
+    const ramInput = document.getElementById('prod-ram');
+    const colorInput = document.getElementById('prod-color');
+    const minStockInput = document.getElementById('prod-min-stock');
+
+    let allModels = [];
+
+    const loadModelsDropdown = async (selectId = null) => {
+      try {
+        allModels = await window.api.productModels.list();
+        modelSelect.innerHTML = `<option value="">-- Selecione ou clique ao lado para criar um modelo --</option>` +
+          allModels.map(m => `<option value="${m.id}" ${selectId == m.id ? 'selected' : ''}>${m.brand} ${m.model} (${m.capacity} | ${m.color})</option>`).join('');
+      } catch (err) {
+        window.app.showToast('Erro ao carregar modelos', 'danger');
+      }
+    };
+
+    loadModelsDropdown(prod ? prod.model_id : null);
+
+    modelSelect.addEventListener('change', () => {
+      const selectedId = parseInt(modelSelect.value);
+      const m = allModels.find(item => item.id === selectedId);
+      if (m) {
+        brandInput.value = m.brand;
+        modelInput.value = m.model;
+        categorySelect.value = m.category;
+        colorInput.value = m.color;
+        capacityInput.value = m.capacity;
+        ramInput.value = m.ram;
+        minStockInput.value = m.min_stock_alert;
+      } else {
+        brandInput.value = '';
+        modelInput.value = '';
+        colorInput.value = '';
+        capacityInput.value = '';
+        ramInput.value = '';
+      }
+      toggleFields();
+    });
+
+    document.getElementById('btn-new-model-modal').addEventListener('click', () => {
+      const modalContent = `
+        <form id="new-model-form">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="new-model-brand">Marca *</label>
+              <input type="text" id="new-model-brand" required placeholder="Ex: Apple">
+            </div>
+            <div class="form-group">
+              <label for="new-model-model">Modelo *</label>
+              <input type="text" id="new-model-model" required placeholder="Ex: iPhone 17 Pro Max">
+            </div>
+          </div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="new-model-category">Categoria *</label>
+              <select id="new-model-category" required>
+                <option value="celular">Celular</option>
+                <option value="tablet">Tablet</option>
+                <option value="smartwatch">Smartwatch</option>
+                <option value="acessorios">Acessórios</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="new-model-color">Cor *</label>
+              <input type="text" id="new-model-color" required placeholder="Ex: Space Black">
+            </div>
+            <div class="form-group">
+              <label for="new-model-capacity">Capacidade *</label>
+              <input type="text" id="new-model-capacity" required placeholder="Ex: 256GB">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="new-model-ram">RAM</label>
+              <input type="text" id="new-model-ram" placeholder="Ex: 8GB">
+            </div>
+            <div class="form-group">
+              <label for="new-model-min-stock">Estoque Mínimo (Alerta) *</label>
+              <input type="number" id="new-model-min-stock" min="1" value="1" required>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-model-submodal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Adicionar Modelo</button>
+          </div>
+        </form>
+      `;
+      // Render as submodal or replace (we'll do temporary secondary popup modal by overriding modal container or injecting alert overlay)
+      const popup = document.createElement('div');
+      popup.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:9999;";
+      popup.innerHTML = `
+        <div style="background:var(--bg-secondary); padding:24px; border-radius:var(--border-radius-lg); width:100%; max-width:550px; border:1px solid var(--border-color);">
+          <h3 style="margin-bottom: 20px;">Cadastrar Novo Modelo de Referência</h3>
+          ${modalContent}
+        </div>
+      `;
+      document.body.appendChild(popup);
+
+      document.getElementById('btn-cancel-model-submodal').addEventListener('click', () => popup.remove());
+      
+      document.getElementById('new-model-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const dataModel = {
+          brand: document.getElementById('new-model-brand').value,
+          model: document.getElementById('new-model-model').value,
+          category: document.getElementById('new-model-category').value,
+          color: document.getElementById('new-model-color').value,
+          capacity: document.getElementById('new-model-capacity').value,
+          ram: document.getElementById('new-model-ram').value || 'N/A',
+          min_stock_alert: parseInt(document.getElementById('new-model-min-stock').value)
+        };
+        try {
+          const created = await window.api.productModels.create(dataModel);
+          window.app.showToast('Modelo de referência cadastrado com sucesso!', 'success');
+          popup.remove();
+          await loadModelsDropdown(created.id);
+          // Auto fill fields
+          brandInput.value = created.brand;
+          modelInput.value = created.model;
+          categorySelect.value = created.category;
+          colorInput.value = created.color;
+          capacityInput.value = created.capacity;
+          ramInput.value = created.ram;
+          minStockInput.value = created.min_stock_alert;
+          toggleFields();
+        } catch (err) {
+          window.app.showToast(err.message, 'danger');
+        }
+      });
+    });
+
     // Toggle hardware fields based on category
     const categorySelect = document.getElementById('prod-category');
     const toggleFields = () => {
@@ -342,7 +481,6 @@ window.views.products = {
         serialBlock.style.display = 'grid';
       }
     };
-    categorySelect.addEventListener('change', toggleFields);
     toggleFields();
 
     // Image Upload trigger simulation
@@ -372,15 +510,13 @@ window.views.products = {
     document.getElementById('product-form').addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      if (!modelSelect.value) {
+        return window.app.showToast('Você deve selecionar um Modelo de Referência para cadastrar um aparelho.', 'danger');
+      }
+
       const payload = {
-        brand: document.getElementById('prod-brand').value,
-        model: document.getElementById('prod-model').value,
-        category: categorySelect.value,
+        model_id: parseInt(modelSelect.value),
         state: document.getElementById('prod-state').value,
-        color: document.getElementById('prod-color').value,
-        capacity: document.getElementById('prod-capacity').value,
-        ram: document.getElementById('prod-ram').value,
-        min_stock_alert: parseInt(document.getElementById('prod-min-stock').value),
         imei_1: document.getElementById('prod-imei1').value || null,
         imei_2: document.getElementById('prod-imei2').value || null,
         serial_number: document.getElementById('prod-serial').value || null,

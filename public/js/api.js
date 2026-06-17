@@ -289,6 +289,19 @@ const api = {
         body: data
       });
     }
+  },
+
+  // Product Models
+  productModels: {
+    async list() {
+      return await api.request('/product-models');
+    },
+    async create(data) {
+      return await api.request('/product-models', {
+        method: 'POST',
+        body: data
+      });
+    }
   }
 };
 window.api = api;
