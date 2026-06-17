@@ -54,6 +54,14 @@ window.views.sales = {
             </div>
           </div>
 
+          <!-- Cart Header with Clear Cart button -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 8px;">
+            <h4 style="font-weight: 700; margin: 0; font-size: 14px; color: var(--text-primary);">Aparelhos no Carrinho</h4>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-cart" style="display: flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background: transparent; cursor: pointer;">
+              🗑️ Limpar Carrinho
+            </button>
+          </div>
+
           <!-- Cart list -->
           <div class="pos-cart-list" id="pos-cart-items">
             <p class="empty-state">Carrinho vazio. Escaneie ou selecione um produto para iniciar.</p>
@@ -220,6 +228,9 @@ window.views.sales = {
       }, 500);
     });
 
+    // Clear cart listener
+    document.getElementById('btn-clear-cart').addEventListener('click', () => this.clearCart());
+
     // Checkout execution
     document.getElementById('btn-checkout').addEventListener('click', () => this.checkout());
 
@@ -251,6 +262,20 @@ window.views.sales = {
     this.cart = this.cart.filter(item => item.id !== id);
     this.renderCart();
     this.updateTotals();
+  },
+
+  clearCart() {
+    if (this.cart.length === 0) {
+      window.app.showToast('O carrinho já está vazio!', 'warning');
+      return;
+    }
+    if (confirm('Deseja realmente limpar todos os itens do carrinho?')) {
+      this.cart = [];
+      this.renderCart();
+      this.updateTotals();
+      document.getElementById('pos-discount').value = '0.00';
+      window.app.showToast('Carrinho limpo com sucesso!', 'success');
+    }
   },
 
   renderCart() {
