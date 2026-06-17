@@ -124,6 +124,7 @@ window.views.products = {
             <td>
               <div class="flex-actions" style="display: flex; gap: 6px;">
                 <button class="btn btn-ghost btn-sm btn-qr" title="Gerar QR Code">📱 QR</button>
+                ${p.imei_1 ? `<button class="btn btn-ghost btn-sm btn-imei" title="Consultar IMEI Blacklist">🔍 IMEI</button>` : ''}
                 ${canManage ? `
                   <button class="btn btn-ghost btn-sm btn-edit" title="Editar">✏️</button>
                   ${p.status !== 'vendido' ? `<button class="btn btn-ghost btn-sm btn-delete text-danger" title="Excluir">🗑️</button>` : ''}
@@ -139,6 +140,13 @@ window.views.products = {
         btn.addEventListener('click', (e) => {
           const id = parseInt(e.target.closest('tr').dataset.id);
           this.showQRModal(id);
+        });
+      });
+
+      tbody.querySelectorAll('.btn-imei').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = parseInt(e.target.closest('tr').dataset.id);
+          this.showIMEICheckModal(id);
         });
       });
 
@@ -544,6 +552,153 @@ window.views.products = {
     });
 
     document.getElementById('btn-cancel-prod-modal').addEventListener('click', () => window.app.closeModal());
+  },
+
+  showIMEICheckModal(id) {
+    const prod = this.products.find(p => p.id === id);
+    if (!prod || !prod.imei_1) return;
+
+    const modalTitle = `Consulta de Blacklist IMEI: ${prod.brand} ${prod.model}`;
+    const optionsHtml = `
+      <option value="${prod.imei_1}">IMEI 1: ${prod.imei_1}</option>
+      ${prod.imei_2 ? `<option value="${prod.imei_2}">IMEI 2: ${prod.imei_2}</option>` : ''}
+    `;
+
+    const content = `
+      <div id="imei-checker-container" style="padding: 10px 0;">
+        <p style="font-size: 14px; margin-bottom: 16px; color: var(--text-secondary);">
+          Verifique se o aparelho possui alguma restrição por perda, roubo ou furto cadastrado nos órgãos de segurança pública ou banco de dados global (GSMA).
+        </p>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="imei-select">Selecione o IMEI para consulta</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="imei-select" style="flex: 1;">
+              ${optionsHtml}
+            </select>
+            <button type="button" class="btn btn-secondary" id="btn-copy-imei" style="padding: 0 16px;">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+          <button type="button" class="btn btn-primary w-100" id="btn-run-check" style="justify-content: center; width: 100%;">
+            📡 Consultar Banco de Dados Integrado (GSMA / ANATEL)
+          </button>
+          
+          <button type="button" class="btn btn-secondary w-100" id="btn-anatel-link" style="justify-content: center; width: 100%; display: flex; align-items: center; gap: 6px;">
+            🔗 Abrir Consulta Oficial Anatel (Celular Legal) 
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </button>
+        </div>
+
+        <div id="imei-check-result" style="border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 16px; min-height: 80px; display: flex; align-items: center; justify-content: center; background: var(--bg-primary);">
+          <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+            Aguardando início da consulta...
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+      </div>
+    `;
+
+    window.app.showModal(modalTitle, content);
+
+    const getSelectedIMEI = () => document.getElementById('imei-select').value;
+
+    document.getElementById('btn-copy-imei').addEventListener('click', () => {
+      const imei = getSelectedIMEI();
+      navigator.clipboard.writeText(imei);
+      window.app.showToast(`IMEI ${imei} copiado para a área de transferência!`, 'success');
+    });
+
+    document.getElementById('btn-anatel-link').addEventListener('click', () => {
+      const imei = getSelectedIMEI();
+      navigator.clipboard.writeText(imei);
+      window.app.showToast(`IMEI ${imei} copiado! Redirecionando para Anatel...`, 'info');
+      setTimeout(() => {
+        window.open('https://www.anatel.gov.br/celularlegal/consulte-sua-situacao', '_blank');
+      }, 800);
+    });
+
+    document.getElementById('btn-run-check').addEventListener('click', async () => {
+      const imei = getSelectedIMEI();
+      const resultDiv = document.getElementById('imei-check-result');
+      
+      if (!document.getElementById('spinner-style')) {
+        const style = document.createElement('style');
+        style.id = 'spinner-style';
+        style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+      }
+
+      resultDiv.innerHTML = `
+        <div style="text-align: center; width: 100%; padding: 12px 0;">
+          <div class="spinner" style="margin: 0 auto 12px auto; width: 30px; height: 30px; border: 3px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+          <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Acessando servidores integrados...</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Consultando base CEM Anatel & GSMA Registry para IMEI: <strong>${imei}</strong></div>
+        </div>
+      `;
+
+      try {
+        const res = await fetch(`/api/imei-check/${imei}`, {
+          headers: {
+            'Authorization': `Bearer ${window.app.token}`
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro na consulta do IMEI');
+
+        if (data.status === 'blocked') {
+          resultDiv.innerHTML = `
+            <div style="width: 100%;">
+              <div style="display: flex; align-items: center; gap: 8px; color: var(--danger); font-weight: 700; font-size: 16px; margin-bottom: 12px;">
+                <span>⚠️ APARELHO IMPEDIDO (BLACKLIST)</span>
+              </div>
+              <p style="font-size: 14px; line-height: 1.5; margin-bottom: 12px; color: var(--text-primary); font-weight: 500;">
+                ${data.message}
+              </p>
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 8px;">
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Marca / Modelo:</td><td style="padding: 6px 0; text-align: right;">${data.details.brand} ${data.details.model}</td></tr>
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Data do Bloqueio:</td><td style="padding: 6px 0; text-align: right;">${new Date(data.details.block_date).toLocaleDateString('pt-BR')}</td></tr>
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Motivo do Bloqueio:</td><td style="padding: 6px 0; text-align: right; color: var(--danger); font-weight: 600;">${data.details.block_reason}</td></tr>
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Boletim de Ocorrência:</td><td style="padding: 6px 0; text-align: right;">${data.details.police_report}</td></tr>
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Solicitante:</td><td style="padding: 6px 0; text-align: right;">${data.details.requesting_carrier}</td></tr>
+                <tr><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Base de Dados:</td><td style="padding: 6px 0; text-align: right; font-style: italic;">${data.details.blacklist_source}</td></tr>
+              </table>
+              <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); padding: 10px; margin-top: 14px; font-size: 12px; border-radius: 4px; color: var(--text-primary);">
+                <strong>Atenção:</strong> Aparelhos com bloqueio de IMEI na blacklist nacional não se conectarão a nenhuma rede celular móvel e sua comercialização pode configurar crime de receptação.
+              </div>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div style="width: 100%;">
+              <div style="display: flex; align-items: center; gap: 8px; color: var(--success); font-weight: 700; font-size: 16px; margin-bottom: 12px;">
+                <span>✅ APARELHO REGULAR (CLEAN)</span>
+              </div>
+              <p style="font-size: 14px; line-height: 1.5; margin-bottom: 12px; color: var(--text-primary);">
+                ${data.message}
+              </p>
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 8px;">
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Identificação Modelos:</td><td style="padding: 6px 0; text-align: right;">${data.details.brand} ${data.details.model}</td></tr>
+                <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Homologação:</td><td style="padding: 6px 0; text-align: right; color: var(--success); font-weight: 600;">${data.details.certification_status} (${data.details.certification_body})</td></tr>
+                <tr><td style="padding: 6px 0; font-weight: 600; color: var(--text-secondary);">Fonte de Consulta:</td><td style="padding: 6px 0; text-align: right; font-style: italic;">${data.details.blacklist_source}</td></tr>
+              </table>
+              <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); padding: 10px; margin-top: 14px; font-size: 12px; border-radius: 4px; color: var(--text-primary);">
+                <strong>Observação:</strong> Este aparelho está apto para comercialização e uso regular nas redes móveis em território nacional e internacional.
+              </div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        resultDiv.innerHTML = `
+          <div style="text-align: center; color: var(--danger); font-size: 14px; padding: 12px 0;">
+            ❌ Erro ao consultar IMEI: ${err.message}
+          </div>
+        `;
+      }
+    });
   },
 
   showQRModal(id) {

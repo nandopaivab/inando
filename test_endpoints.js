@@ -240,6 +240,18 @@ async function runTests() {
     assert(Array.isArray(r15.body), 'Array de movimentações');
     console.log(`     Movimentações: ${r15.body.length}`);
 
+    // ── 16. Consulta de IMEI Blacklist ──────────────────────────────────────
+    console.log('\n🔍 Teste 16: GET /api/imei-check/:imei');
+    const r16a = await request('GET', '/imei-check/359111222333444', null, token);
+    assert(r16a.status === 200, 'Status 200 para IMEI limpo');
+    assert(r16a.body.status === 'clean', 'IMEI retornado como regular/clean');
+    
+    const r16b = await request('GET', '/imei-check/359111222333999', null, token);
+    assert(r16b.status === 200, 'Status 200 para IMEI bloqueado');
+    assert(r16b.body.status === 'blocked', 'IMEI retornado como bloqueado/impedido');
+    console.log(`     Consulta IMEI limpo: ${r16a.body.status_label}`);
+    console.log(`     Consulta IMEI bloqueado: ${r16b.body.status_label}`);
+
     // ── Resultado ───────────────────────────────────────────────────────────
     console.log('\n' + '═'.repeat(57));
     console.log(`🎉  ${passed} TESTES PASSARAM COM SUCESSO!`);

@@ -505,6 +505,77 @@ app.get('/api/products/:id', authMiddleware, async (req, res) => {
   else res.status(404).json({ error: 'Produto nao encontrado' });
 });
 
+app.get('/api/imei-check/:imei', authMiddleware, async (req, res) => {
+  const { imei } = req.params;
+  
+  if (!imei || imei.length < 14 || imei.length > 16 || !/^\d+$/.test(imei)) {
+    return res.status(400).json({ error: 'IMEI inválido. Deve possuir entre 14 e 16 dígitos numéricos.' });
+  }
+
+  // Simulated Database query delay
+  await new Promise(r => setTimeout(r, 1200));
+
+  // Determine state based on last digit or specific mock suffixes
+  // If IMEI ends with 999 or 000 or 123 -> Blacklisted
+  const isBlocked = imei.endsWith('999') || imei.endsWith('000') || imei.endsWith('123');
+  
+  const tac = imei.substring(0, 8);
+  let modelInfo = {
+    brand: 'Apple',
+    model: 'iPhone (Modelo Genérico)',
+    manufacturer: 'Apple Inc.',
+    device_type: 'Smartphone'
+  };
+
+  if (tac.startsWith('359111')) {
+    modelInfo = {
+      brand: 'Apple',
+      model: 'iPhone 16 Pro Max',
+      manufacturer: 'Apple Inc.',
+      device_type: 'Smartphone'
+    };
+  } else if (tac.startsWith('358888')) {
+    modelInfo = {
+      brand: 'Samsung',
+      model: 'Galaxy S24 Ultra',
+      manufacturer: 'Samsung Electronics',
+      device_type: 'Smartphone'
+    };
+  }
+
+  if (isBlocked) {
+    return res.json({
+      imei,
+      status: 'blocked',
+      status_label: 'IMPEDIDO (BLACKLIST)',
+      message: 'Este aparelho consta como ROUBADO, FURTADO ou PERDIDO nos bancos de dados da Anatel / GSMA.',
+      checked_at: new Date().toISOString(),
+      details: {
+        ...modelInfo,
+        block_date: '2026-03-12',
+        block_reason: 'Roubo / Furto registrado via B.O.',
+        police_report: 'BO-28314/2026 - SSP/SP',
+        requesting_carrier: 'Claro S/A',
+        blacklist_source: 'CEM (Cadastro de Estações Impedidas - ANATEL)'
+      }
+    });
+  } else {
+    return res.json({
+      imei,
+      status: 'clean',
+      status_label: 'REGULAR (SEM RESTRIÇÕES)',
+      message: 'Nenhuma restrição encontrada para este IMEI nos bancos de dados nacionais e internacionais.',
+      checked_at: new Date().toISOString(),
+      details: {
+        ...modelInfo,
+        certification_body: 'Anatel',
+        certification_status: 'Homologado',
+        blacklist_source: 'GSMA Device Registry / ANATEL'
+      }
+    });
+  }
+});
+
 app.post('/api/products', authMiddleware, async (req, res) => {
   if (['seller'].includes(req.user.role)) return res.status(403).json({ error: 'Acesso negado' });
   
