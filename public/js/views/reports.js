@@ -125,10 +125,10 @@ window.views.reports = {
     new Chart(sellerCtx, {
       type: 'bar',
       data: {
-        labels: sellers.length > 0 ? sellers : ['Mariana Souza', 'Fernando Paiva'],
+        labels: sellers.length > 0 ? sellers : ['Sem dados'],
         datasets: [{
           label: 'Faturamento por Vendedor (R$)',
-          data: sellerTotals.length > 0 ? sellerTotals : [9247.00, 3299.00],
+          data: sellerTotals.length > 0 ? sellerTotals : [0],
           backgroundColor: '#a855f7',
           borderRadius: 6
         }]
@@ -163,10 +163,10 @@ window.views.reports = {
     new Chart(brandCtx, {
       type: 'doughnut',
       data: {
-        labels: brands.length > 0 ? brands : ['Apple', 'Samsung', 'Xiaomi'],
+        labels: brands.length > 0 ? brands : ['Sem dados'],
         datasets: [{
-          data: brandValues.length > 0 ? brandValues : [12800.00, 4000.00, 850.00],
-          backgroundColor: ['#6366f1', '#06b6d4', '#ef4444', '#f59e0b', '#10b981'],
+          data: brandValues.length > 0 ? brandValues : [0],
+          backgroundColor: brands.length > 0 ? ['#6366f1', '#06b6d4', '#ef4444', '#f59e0b', '#10b981'] : ['#475569'],
           borderColor: isDark ? '#1e293b' : '#ffffff',
           borderWidth: 2
         }]
