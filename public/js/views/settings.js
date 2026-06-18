@@ -7,7 +7,8 @@ window.views.settings = {
     const isAdmin = user && user.role === 'admin';
 
     container.innerHTML = `
-      <div style="max-width: 700px; margin: 0 auto; background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 32px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md);">
+      <div style="position: relative; max-width: 700px; margin: 0 auto; background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 32px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md);">
+        <button type="button" id="btn-close-settings" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: var(--transition-fast);" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">❌</button>
         <h3 style="font-size: 16px; font-weight:700; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 24px;">Configurações Gerais do ERP</h3>
         
         <form id="settings-form">
@@ -165,6 +166,11 @@ window.views.settings = {
       } catch (err) {
         window.app.showToast(err.message, 'danger');
       }
+    });
+
+    // Close settings click listener
+    document.getElementById('btn-close-settings').addEventListener('click', () => {
+      window.app.navigateTo('dashboard');
     });
 
     // Backup simulation click

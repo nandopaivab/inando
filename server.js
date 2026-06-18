@@ -1110,6 +1110,36 @@ app.delete('/api/finance/transactions/:id', authMiddleware, async (req, res) => 
   res.json({ message: 'Lançamento financeiro excluido' });
 });
 
+app.get('/api/warranty/used', authMiddleware, async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        p.id as product_id,
+        p.imei_1,
+        p.serial_number,
+        pm.brand,
+        pm.model,
+        pm.color,
+        pm.capacity,
+        s.id as sale_id,
+        s.sale_date,
+        c.name as client_name,
+        c.phone as client_phone
+      FROM products p
+      JOIN product_models pm ON p.model_id = pm.id
+      JOIN sale_items si ON p.id = si.product_id
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN clients c ON s.client_id = c.id
+      WHERE p.state = 'usado' AND s.status = 'concluida'
+      ORDER BY s.sale_date DESC
+    `;
+    const rows = await dbAll(sql);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/reports/commissions', authMiddleware, async (req, res) => {
   if (req.user.role === 'seller') {
     return res.status(403).json({ error: 'Acesso negado' });

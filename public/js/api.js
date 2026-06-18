@@ -272,6 +272,13 @@ const api = {
     }
   },
 
+  // Warranty
+  warranty: {
+    async getUsedWarrantyList() {
+      return await api.request('/warranty/used');
+    }
+  },
+
   // Settings
   settings: {
     async get() {
