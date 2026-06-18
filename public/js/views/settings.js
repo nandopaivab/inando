@@ -61,6 +61,7 @@ window.views.settings = {
             </div>
           </div>
 
+          ${isAdmin ? `<button type="submit" class="btn btn-primary" style="margin-top: 20px;">Salvar Configurações</button>` : ''}
         </form>
 
         <div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;">
