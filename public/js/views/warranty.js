@@ -7,8 +7,8 @@ window.views.warranty = {
       <div class="warranty-view" style="display: flex; flex-direction: column; gap: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px 20px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-sm);">
           <div>
-            <h3 style="font-size: 16px; font-weight:700; margin: 0; color: var(--text-primary);">Garantia de Aparelhos Usados e Seminovos</h3>
-            <p class="text-muted" style="font-size: 12px; margin: 4px 0 0 0;">Controle do prazo de garantia de 90 dias para aparelhos vendidos</p>
+            <h3 style="font-size: 16px; font-weight:700; margin: 0; color: var(--text-primary);">Garantia de Aparelhos Usados, Seminovos e Recondicionados</h3>
+            <p class="text-muted" style="font-size: 12px; margin: 4px 0 0 0;">Controle do prazo de garantia de 90 dias a contar da data de compra</p>
           </div>
           <div style="position: relative; width: 250px;">
             <input type="text" id="warranty-search" placeholder="Buscar modelo, IMEI ou cliente..." style="width: 100%; padding: 8px 12px 8px 30px; font-size: 13px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
@@ -67,12 +67,14 @@ window.views.warranty = {
       const imei = (item.imei_1 || '').toLowerCase();
       const serial = (item.serial_number || '').toLowerCase();
       const client = (item.client_name || 'Consumidor Final').toLowerCase();
+      const email = (item.client_email || '').toLowerCase();
+      const phone = (item.client_phone || '').toLowerCase();
       
-      return model.includes(query) || imei.includes(query) || serial.includes(query) || client.includes(query);
+      return model.includes(query) || imei.includes(query) || serial.includes(query) || client.includes(query) || email.includes(query) || phone.includes(query);
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum aparelho usado vendido localizado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum aparelho usado, seminovo ou recondicionado vendido localizado.</td></tr>`;
       return;
     }
 
@@ -123,8 +125,9 @@ window.views.warranty = {
             </div>
           </td>
           <td style="padding: 12px 8px;">
-            <div>${item.client_name || 'Consumidor Final'}</div>
-            ${item.client_phone ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${item.client_phone}</div>` : ''}
+            <div style="font-weight: 600;">${item.client_name || 'Consumidor Final'}</div>
+            ${item.client_phone ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">📞 ${item.client_phone}</div>` : ''}
+            ${item.client_email ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">✉️ ${item.client_email}</div>` : ''}
           </td>
           <td style="padding: 12px 8px;">
             ${saleDate.toLocaleDateString('pt-BR')}
