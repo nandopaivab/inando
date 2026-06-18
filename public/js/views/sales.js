@@ -38,19 +38,37 @@ window.views.sales = {
     viewport.innerHTML = `
       <div class="pos-layout">
         <!-- Catalog & Cart -->
-        <div class="pos-left" style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; height: 100%; overflow: hidden;">
-          <!-- Catalog Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow: hidden;">
-            <div class="pos-search-box" style="padding: 10px; display: flex; flex-direction: column; gap: 6px;">
-              <h4 style="font-weight: 700; margin: 0; font-size: 13px; color: var(--text-primary);">Catálogo de Aparelhos</h4>
-              <div style="position: relative; display: flex; align-items: center;">
+        <div class="pos-left" style="display: grid; grid-template-columns: 2.3fr 1fr; gap: 16px; height: 100%; overflow: hidden;">
+          <!-- Catalog Column (split inside) -->
+          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 12px; background: rgba(255, 255, 255, 0.01);">
+            <div class="pos-search-box" style="padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+              <h4 style="font-weight: 700; margin: 0; font-size: 13px; color: var(--text-primary); white-space: nowrap;">Catálogo de Aparelhos</h4>
+              <div style="position: relative; display: flex; align-items: center; flex: 1; max-width: 300px;">
                 <span style="position: absolute; left: 8px; color: var(--text-secondary); font-size: 12px;">🔍</span>
                 <input type="text" id="catalog-search-input" placeholder="Buscar modelo, IMEI, cor..." style="width: 100%; padding: 6px 8px 6px 26px; font-size: 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
               </div>
             </div>
             
-            <div id="catalog-products-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
-              <!-- Catalog items loaded dynamically -->
+            <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; flex: 1; min-height: 0; overflow: hidden;">
+              <!-- Novos, Seminovos & Usados Column -->
+              <div style="display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; overflow: hidden;">
+                <h5 style="margin: 0; font-size: 11px; font-weight: 700; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+                  📱 Novos, Seminovos e Usados
+                </h5>
+                <div id="catalog-products-list-standard" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                  <!-- Standard items loaded dynamically -->
+                </div>
+              </div>
+              
+              <!-- Recondicionados Column -->
+              <div style="display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; overflow: hidden;">
+                <h5 style="margin: 0; font-size: 11px; font-weight: 700; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+                  🔧 Recondicionados
+                </h5>
+                <div id="catalog-products-list-recond" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                  <!-- Reconditioned items loaded dynamically -->
+                </div>
+              </div>
             </div>
           </div>
 
@@ -192,6 +210,17 @@ window.views.sales = {
                   <input type="number" id="trade-valuation" min="0" step="0.01" value="0.00">
                 </div>
               </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="trade-replaced-parts">Peças Substituídas / Reparos</label>
+                  <input type="text" id="trade-replaced-parts" placeholder="Ex: Nenhuma, Tela trocada">
+                </div>
+                <div class="form-group">
+                  <label for="trade-battery-health">Saúde da Bateria (%)</label>
+                  <input type="text" id="trade-battery-health" placeholder="Ex: 88%">
+                </div>
+              </div>
             </div>
           </div>
 
@@ -312,6 +341,23 @@ window.views.sales = {
       this.updateTotals();
     });
 
+    // Trade-in state change toggle for battery & replaced parts
+    const tradeStateSelect = document.getElementById('trade-state');
+    const toggleTradeStateFields = () => {
+      const state = tradeStateSelect.value;
+      const replacedGroup = document.getElementById('trade-replaced-parts').closest('.form-group');
+      const batteryGroup = document.getElementById('trade-battery-health').closest('.form-group');
+      if (state === 'novo') {
+        replacedGroup.style.display = 'none';
+        batteryGroup.style.display = 'none';
+      } else {
+        replacedGroup.style.display = 'block';
+        batteryGroup.style.display = 'block';
+      }
+    };
+    tradeStateSelect.addEventListener('change', toggleTradeStateFields);
+    toggleTradeStateFields();
+
     // CRM Quick button
     document.getElementById('btn-pos-add-client').addEventListener('click', () => {
       // Trigger CRM modal with a callback to refresh and auto-select
@@ -389,8 +435,9 @@ window.views.sales = {
   },
 
   renderCatalog() {
-    const container = document.getElementById('catalog-products-list');
-    if (!container) return;
+    const stdContainer = document.getElementById('catalog-products-list-standard');
+    const recContainer = document.getElementById('catalog-products-list-recond');
+    if (!stdContainer || !recContainer) return;
 
     const query = (document.getElementById('catalog-search-input')?.value || '').toLowerCase().trim();
 
@@ -413,58 +460,83 @@ window.views.sales = {
              serial.includes(query);
     });
 
-    if (filtered.length === 0) {
-      container.innerHTML = `<p class="empty-state" style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--text-muted);">Nenhum aparelho encontrado.</p>`;
-      return;
-    }
+    // Split into standard (novo, seminovo, usado) and reconditioned
+    const stdProducts = filtered.filter(p => p.state !== 'recondicionado');
+    const recProducts = filtered.filter(p => p.state === 'recondicionado');
 
-    container.innerHTML = filtered.map(p => {
-      const inCart = this.cart.some(item => Number(item.id) === Number(p.id));
-      
-      return `
-        <div class="catalog-item" style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius-sm);
-          padding: 8px 10px;
-          transition: var(--transition-fast);
-        ">
-          <div class="catalog-item-info" style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
-            <h4 style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0;">${p.brand} ${p.model}</h4>
-            <p style="font-size: 10px; color: var(--text-secondary); margin: 0;">
-              ${p.color} | ${p.capacity}
-            </p>
-            <p style="font-size: 9px; color: var(--text-muted); margin: 0;">
-              IMEI/Série: ${p.imei_1 || p.serial_number || 'N/A'}
-            </p>
-            <span style="font-size: 11px; font-weight: 700; color: var(--primary); margin-top: 2px;">
-              R$ ${(p.selling_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </span>
+    // Render helper
+    const renderList = (productsList, containerEl, emptyMsg) => {
+      if (productsList.length === 0) {
+        containerEl.innerHTML = `<p class="empty-state" style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--text-muted);">${emptyMsg}</p>`;
+        return;
+      }
+
+      containerEl.innerHTML = productsList.map(p => {
+        const inCart = this.cart.some(item => Number(item.id) === Number(p.id));
+        
+        let detailsHtml = '';
+        if (p.state !== 'novo') {
+          if (p.battery_health) {
+            detailsHtml += `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); font-size: 9px; padding: 2px 4px; border-radius: 3px; display: inline-block;">🔋 Saúde: ${p.battery_health}%</span>`;
+          }
+          if (p.replaced_parts) {
+            detailsHtml += `<span class="badge" style="background: rgba(245, 158, 11, 0.1); color: var(--warning); font-size: 9px; padding: 2px 4px; border-radius: 3px; display: inline-block; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Peças: ${p.replaced_parts}">🔧 Reparos</span>`;
+          }
+        }
+
+        return `
+          <div class="catalog-item" style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+            padding: 8px 10px;
+            transition: var(--transition-fast);
+            min-width: 0;
+          ">
+            <div class="catalog-item-info" style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; flex: 1;">
+              <h4 style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 4px; justify-content: space-between;">
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px;">${p.brand} ${p.model}</span>
+                <span style="font-size: 8px; font-weight: normal; color: var(--text-muted); background: var(--bg-tertiary); padding: 1px 3px; border-radius: 2px; border: 1px solid var(--border-color); text-transform: uppercase;">${p.state}</span>
+              </h4>
+              <p style="font-size: 10px; color: var(--text-secondary); margin: 0;">
+                ${p.color} | ${p.capacity}
+              </p>
+              <p style="font-size: 9px; color: var(--text-muted); margin: 0;">
+                IMEI/Série: ${p.imei_1 || p.serial_number || 'N/A'}
+              </p>
+              ${detailsHtml ? `<div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">${detailsHtml}</div>` : ''}
+              <span style="font-size: 11px; font-weight: 700; color: var(--primary); margin-top: 2px;">
+                R$ ${(p.selling_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div class="catalog-item-action" style="margin-left: 8px;">
+              ${inCart ? `
+                <button class="btn btn-secondary btn-sm" disabled style="
+                  font-size: 10px;
+                  padding: 4px 6px;
+                  background: rgba(16, 185, 129, 0.1);
+                  color: var(--success);
+                  border-color: rgba(16, 185, 129, 0.2);
+                  cursor: not-allowed;
+                ">✓ No Carrinho</button>
+              ` : `
+                <button class="btn btn-primary btn-sm" onclick="window.views.sales.addCatalogItemToCart(${p.id})" style="
+                  font-size: 10px;
+                  padding: 4px 6px;
+                ">➕ Add</button>
+              `}
+            </div>
           </div>
-          <div class="catalog-item-action">
-            ${inCart ? `
-              <button class="btn btn-secondary btn-sm" disabled style="
-                font-size: 10px;
-                padding: 4px 8px;
-                background: rgba(16, 185, 129, 0.1);
-                color: var(--success);
-                border-color: rgba(16, 185, 129, 0.2);
-                cursor: not-allowed;
-              ">✓ No Carrinho</button>
-            ` : `
-              <button class="btn btn-primary btn-sm" onclick="window.views.sales.addCatalogItemToCart(${p.id})" style="
-                font-size: 10px;
-                padding: 4px 8px;
-              ">➕ Adicionar</button>
-            `}
-          </div>
-        </div>
-      `;
-    }).join('');
-  },
+        `;
+      }).join('');
+    };
+
+    renderList(stdProducts, stdContainer, "Nenhum aparelho padrão.");
+    renderList(recProducts, recContainer, "Nenhum recondicionado.");
+  }
 
   addCatalogItemToCart(id) {
     const product = this.availableProducts.find(p => Number(p.id) === Number(id));
@@ -578,7 +650,9 @@ window.views.sales = {
           imei_1: document.getElementById('trade-imei1').value.trim() || null,
           imei_2: document.getElementById('trade-imei2').value.trim() || null,
           serial_number: document.getElementById('trade-serial').value.trim() || null,
-          valuation_value: valuation
+          valuation_value: valuation,
+          replaced_parts: document.getElementById('trade-replaced-parts').value.trim() || null,
+          battery_health: document.getElementById('trade-battery-health').value.trim() || null
         };
       }
 
@@ -802,6 +876,8 @@ window.views.sales = {
         document.getElementById('trade-imei2').value = '';
         document.getElementById('trade-serial').value = '';
         document.getElementById('trade-valuation').value = '0.00';
+        document.getElementById('trade-replaced-parts').value = '';
+        document.getElementById('trade-battery-health').value = '';
       }
 
       this.updateTotals();

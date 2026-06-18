@@ -107,6 +107,10 @@ window.views.products = {
         let specs = '-';
         if (p.category !== 'acessorios') {
           specs = `${p.color || 'N/A'} | ${p.capacity || 'N/A'} | ${p.ram || 'N/A'} RAM | <small>${p.state.toUpperCase()}</small>`;
+          if (p.state !== 'novo') {
+            if (p.battery_health) specs += `<br><span class="badge badge-success" style="font-size: 10px; padding: 2px 4px; display: inline-block; margin-top: 4px;">🔋 ${p.battery_health}%</span>`;
+            if (p.replaced_parts) specs += `<br><span class="badge badge-warning" style="font-size: 10px; padding: 2px 4px; display: inline-block; margin-top: 4px;" title="${p.replaced_parts}">🔧 Peças: ${p.replaced_parts}</span>`;
+          }
         }
 
         let ident = '';
@@ -266,6 +270,17 @@ window.views.products = {
           <div class="form-group">
             <label for="prod-serial">Número de Série</label>
             <input type="text" id="prod-serial" placeholder="N/S do fabricante" value="${prod ? (prod.serial_number || '') : ''}">
+          </div>
+        </div>
+
+        <div class="form-grid-2 used-only-specs" style="display: none; border: 1px solid var(--border-color); padding: 12px; border-radius: var(--border-radius-sm); background: rgba(255, 255, 255, 0.02); margin-bottom: 15px;">
+          <div class="form-group">
+            <label for="prod-replaced-parts">Peças Substituídas / Reparos Realizados</label>
+            <input type="text" id="prod-replaced-parts" placeholder="Ex: Tela trocada, carcaça sem marcas..." value="${prod ? (prod.replaced_parts || '') : ''}">
+          </div>
+          <div class="form-group">
+            <label for="prod-battery-health">Saúde da Bateria (%)</label>
+            <input type="text" id="prod-battery-health" placeholder="Ex: 85 (apenas números ou %)" value="${prod ? (prod.battery_health || '') : ''}">
           </div>
         </div>
 
@@ -494,19 +509,29 @@ window.views.products = {
 
     // Toggle hardware fields based on category
     const categorySelect = document.getElementById('prod-category');
+    const stateSelect = document.getElementById('prod-state');
     const toggleFields = () => {
       const cat = categorySelect.value;
+      const state = stateSelect.value;
       const specsBlock = document.querySelector('.hardware-specs');
       const serialBlock = document.querySelector('.serial-specs');
+      const usedBlock = document.querySelector('.used-only-specs');
       if (cat === 'acessorios') {
         specsBlock.style.display = 'none';
         serialBlock.style.display = 'none';
+        usedBlock.style.display = 'none';
       } else {
         specsBlock.style.display = 'grid';
         serialBlock.style.display = 'grid';
+        if (state !== 'novo') {
+          usedBlock.style.display = 'grid';
+        } else {
+          usedBlock.style.display = 'none';
+        }
       }
     };
     toggleFields();
+    stateSelect.addEventListener('change', toggleFields);
 
     // Image Upload trigger simulation
     const dropzone = document.getElementById('image-dropzone');
@@ -550,7 +575,9 @@ window.views.products = {
         commission_percent: parseFloat(document.getElementById('prod-commission').value),
         purchase_price: parseFloat(costInput.value),
         selling_price: parseFloat(sellingInput.value),
-        images: base64Images
+        images: base64Images,
+        replaced_parts: document.getElementById('prod-replaced-parts').value || null,
+        battery_health: document.getElementById('prod-battery-health').value || null
       };
 
       try {

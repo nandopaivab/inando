@@ -118,6 +118,8 @@ window.views.warranty = {
             ${item.brand} ${item.model}
             <div style="font-size: 11px; color: var(--text-secondary); font-weight: normal; margin-top: 2px;">
               ${item.color} | ${item.capacity}
+              ${item.battery_health ? ` | 🔋 Bateria: ${item.battery_health}%` : ''}
+              ${item.replaced_parts ? ` | 🔧 Reparos: ${item.replaced_parts}` : ''}
             </div>
           </td>
           <td style="padding: 12px 8px;">

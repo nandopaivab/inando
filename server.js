@@ -121,6 +121,18 @@ async function initDb() {
     )
   `);
 
+  try {
+    await dbRun("ALTER TABLE products ADD COLUMN replaced_parts TEXT");
+  } catch (e) {
+    // Column already exists or error, ignore
+  }
+
+  try {
+    await dbRun("ALTER TABLE products ADD COLUMN battery_health TEXT");
+  } catch (e) {
+    // Column already exists or error, ignore
+  }
+
   await dbRun(`
     CREATE TABLE IF NOT EXISTS stock_movements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -553,7 +565,8 @@ app.post('/api/products', authMiddleware, async (req, res) => {
   
   const { 
     model_id, brand, model, category, color, capacity, ram, min_stock_alert,
-    purchase_price, selling_price, imei_1, imei_2, serial_number, state, supplier, purchase_date, commission_percent, images, qr_code 
+    purchase_price, selling_price, imei_1, imei_2, serial_number, state, supplier, purchase_date, commission_percent, images, qr_code,
+    replaced_parts, battery_health
   } = req.body;
 
   if (!purchase_price || !selling_price) {
@@ -589,13 +602,13 @@ app.post('/api/products', authMiddleware, async (req, res) => {
     const qr_val = qr_code || `PROD-MODEL-${finalModelId}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     await dbRun(`
-      INSERT INTO products (model_id, imei_1, imei_2, serial_number, state, purchase_date, supplier, purchase_price, selling_price, commission_percent, images, qr_code, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'disponivel')
+      INSERT INTO products (model_id, imei_1, imei_2, serial_number, state, purchase_date, supplier, purchase_price, selling_price, commission_percent, images, qr_code, status, replaced_parts, battery_health)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'disponivel', ?, ?)
     `, [
       finalModelId, imei_1 || null, imei_2 || null, serial_number || null,
       state || 'novo', purchase_date || new Date().toISOString().slice(0,10), supplier || 'N/A',
       purchase_price, selling_price, parseFloat(commission_percent || 0.0),
-      JSON.stringify(images || []), qr_val
+      JSON.stringify(images || []), qr_val, replaced_parts || null, battery_health || null
     ]);
     
     const lastRow = await dbGet("SELECT last_insert_rowid() as id");
@@ -628,7 +641,7 @@ app.put('/api/products/:id', authMiddleware, async (req, res) => {
   try {
     // Atualiza o item fisico
     await dbRun(`
-      UPDATE products SET imei_1=?, imei_2=?, serial_number=?, state=?, purchase_price=?, selling_price=?, commission_percent=?, status=?
+      UPDATE products SET imei_1=?, imei_2=?, serial_number=?, state=?, purchase_price=?, selling_price=?, commission_percent=?, status=?, replaced_parts=?, battery_health=?
       WHERE id = ?
     `, [
       data.imei_1 !== undefined ? data.imei_1 : prod.imei_1,
@@ -638,7 +651,10 @@ app.put('/api/products/:id', authMiddleware, async (req, res) => {
       data.purchase_price !== undefined ? data.purchase_price : prod.purchase_price,
       data.selling_price !== undefined ? data.selling_price : prod.selling_price,
       parseFloat(data.commission_percent || prod.commission_percent),
-      data.status || prod.status, req.params.id
+      data.status || prod.status,
+      data.replaced_parts !== undefined ? data.replaced_parts : prod.replaced_parts,
+      data.battery_health !== undefined ? data.battery_health : prod.battery_health,
+      req.params.id
     ]);
 
     // Se admin/manager enviou dados de modelo e model_id, atualiza o modelo tambem
@@ -907,8 +923,8 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
     }
 
     await dbRun(`
-      INSERT INTO products (model_id, imei_1, imei_2, serial_number, state, purchase_date, supplier, purchase_price, selling_price, commission_percent, status)
-      VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?, 2.0, 'disponivel')
+      INSERT INTO products (model_id, imei_1, imei_2, serial_number, state, purchase_date, supplier, purchase_price, selling_price, commission_percent, status, replaced_parts, battery_health)
+      VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?, 2.0, 'disponivel', ?, ?)
     `, [
       modelId, 
       trade_in.imei_1 || null, 
@@ -917,7 +933,9 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
       state, 
       `Troca - Cliente: ${clientName}`, 
       valVal, 
-      suggestedSellingPrice
+      suggestedSellingPrice,
+      trade_in.replaced_parts || null,
+      trade_in.battery_health || null
     ]);
     const newProd = await dbGet("SELECT last_insert_rowid() as id");
     const tradeInProductId = newProd.id;
@@ -1125,7 +1143,9 @@ app.get('/api/warranty/used', authMiddleware, async (req, res) => {
         s.sale_date,
         c.name as client_name,
         c.phone as client_phone,
-        c.email as client_email
+        c.email as client_email,
+        p.replaced_parts,
+        p.battery_health
       FROM products p
       JOIN product_models pm ON p.model_id = pm.id
       JOIN sale_items si ON p.id = si.product_id
