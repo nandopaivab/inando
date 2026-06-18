@@ -314,17 +314,22 @@ window.views.sales = {
 
     // CRM Quick button
     document.getElementById('btn-pos-add-client').addEventListener('click', () => {
-      // Trigger CRM modal
-      window.views.clients.showClientModal();
-      // On close, refresh clients select list
-      const closeChecker = setInterval(async () => {
-        if (!document.getElementById('modal-container').classList.contains('hidden')) return;
-        clearInterval(closeChecker);
-        // reload clients list
-        this.clients = await window.api.clients.list();
-        clientSelect.innerHTML = `<option value="">Consumidor Final (Sem cadastro)</option>` + 
-          this.clients.map(c => `<option value="${c.id}">${c.name} (${c.document || 'Sem doc'})</option>`).join('');
-      }, 500);
+      // Trigger CRM modal with a callback to refresh and auto-select
+      window.views.clients.showClientModal(null, async (newClient) => {
+        try {
+          // reload clients list
+          this.clients = await window.api.clients.list();
+          clientSelect.innerHTML = `<option value="">Consumidor Final (Sem cadastro)</option>` + 
+            this.clients.map(c => `<option value="${c.id}">${c.name} (${c.document || 'Sem doc'})</option>`).join('');
+          
+          // Auto-select the newly created client
+          if (newClient && newClient.id) {
+            clientSelect.value = newClient.id;
+          }
+        } catch (e) {
+          window.app.showToast('Erro ao atualizar lista de clientes', 'danger');
+        }
+      });
     });
 
     // Clear cart listener

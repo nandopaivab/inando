@@ -130,7 +130,7 @@ window.views.clients = {
     }
   },
 
-  showClientModal(clientId = null) {
+  showClientModal(clientId = null, onSuccess = null) {
     const isEdit = clientId !== null;
     const cli = isEdit ? this.clients.find(c => c.id === clientId) : null;
 
@@ -203,15 +203,22 @@ window.views.clients = {
       };
 
       try {
+        let result = null;
         if (isEdit) {
-          await window.api.clients.update(clientId, payload);
+          result = await window.api.clients.update(clientId, payload);
           window.app.showToast('Cadastro de cliente atualizado!', 'success');
         } else {
-          await window.api.clients.create(payload);
+          result = await window.api.clients.create(payload);
           window.app.showToast('Cliente cadastrado com sucesso!', 'success');
         }
         window.app.closeModal();
-        this.loadClients();
+        if (onSuccess) {
+          onSuccess(result);
+        } else {
+          if (document.getElementById('client-search')) {
+            this.loadClients();
+          }
+        }
       } catch (err) {
         window.app.showToast(err.message, 'danger');
       }
