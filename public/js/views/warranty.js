@@ -23,13 +23,15 @@ window.views.warranty = {
                 <th style="padding: 12px 8px;">Aparelho</th>
                 <th style="padding: 12px 8px;">Identificador</th>
                 <th style="padding: 12px 8px;">Cliente</th>
+                <th style="padding: 12px 8px;">Telefone</th>
+                <th style="padding: 12px 8px;">E-mail</th>
                 <th style="padding: 12px 8px;">Data da Venda</th>
                 <th style="padding: 12px 8px;">Status da Garantia</th>
               </tr>
             </thead>
             <tbody id="warranty-list-body">
               <tr>
-                <td colspan="5" class="empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">Buscando informações de garantia...</td>
+                <td colspan="7" class="empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">Buscando informações de garantia...</td>
               </tr>
             </tbody>
           </table>
@@ -51,7 +53,7 @@ window.views.warranty = {
       window.app.showToast('Erro ao carregar garantias', 'danger');
       const tbody = document.getElementById('warranty-list-body');
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="text-align: center; padding: 40px; color: var(--danger);">Erro ao carregar dados do servidor.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="text-align: center; padding: 40px; color: var(--danger);">Erro ao carregar dados do servidor.</td></tr>`;
       }
     }
   },
@@ -74,7 +76,7 @@ window.views.warranty = {
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum aparelho usado, seminovo ou recondicionado vendido localizado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum aparelho usado, seminovo ou recondicionado vendido localizado.</td></tr>`;
       return;
     }
 
@@ -124,10 +126,14 @@ window.views.warranty = {
               ${item.serial_number ? `<br>Série: ${item.serial_number}` : ''}
             </div>
           </td>
-          <td style="padding: 12px 8px;">
-            <div style="font-weight: 600;">${item.client_name || 'Consumidor Final'}</div>
-            ${item.client_phone ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">📞 ${item.client_phone}</div>` : ''}
-            ${item.client_email ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">✉️ ${item.client_email}</div>` : ''}
+          <td style="padding: 12px 8px; font-weight: 600;">
+            ${item.client_name || 'Consumidor Final'}
+          </td>
+          <td style="padding: 12px 8px; color: var(--text-secondary);">
+            ${item.client_phone || 'N/A'}
+          </td>
+          <td style="padding: 12px 8px; color: var(--text-secondary);">
+            ${item.client_email || 'N/A'}
           </td>
           <td style="padding: 12px 8px;">
             ${saleDate.toLocaleDateString('pt-BR')}
