@@ -7,8 +7,8 @@ window.views.warranty = {
       <div class="warranty-view" style="display: flex; flex-direction: column; gap: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px 20px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-sm);">
           <div>
-            <h3 style="font-size: 16px; font-weight:700; margin: 0; color: var(--text-primary);">Garantia de Aparelhos Usados</h3>
-            <p class="text-muted" style="font-size: 12px; margin: 4px 0 0 0;">Controle do prazo legal de 90 dias para aparelhos vendidos</p>
+            <h3 style="font-size: 16px; font-weight:700; margin: 0; color: var(--text-primary);">Garantia de Aparelhos Usados e Seminovos</h3>
+            <p class="text-muted" style="font-size: 12px; margin: 4px 0 0 0;">Controle do prazo de garantia de 90 dias para aparelhos vendidos</p>
           </div>
           <div style="position: relative; width: 250px;">
             <input type="text" id="warranty-search" placeholder="Buscar modelo, IMEI ou cliente..." style="width: 100%; padding: 8px 12px 8px 30px; font-size: 13px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">

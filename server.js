@@ -1130,7 +1130,7 @@ app.get('/api/warranty/used', authMiddleware, async (req, res) => {
       JOIN sale_items si ON p.id = si.product_id
       JOIN sales s ON si.sale_id = s.id
       LEFT JOIN clients c ON s.client_id = c.id
-      WHERE p.state = 'usado' AND s.status = 'concluida'
+      WHERE p.state IN ('usado', 'seminovo') AND s.status = 'concluida'
       ORDER BY s.sale_date DESC
     `;
     const rows = await dbAll(sql);
