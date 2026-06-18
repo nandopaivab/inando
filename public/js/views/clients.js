@@ -156,16 +156,16 @@ window.views.clients = {
 
         <div class="form-grid-3">
           <div class="form-group">
-            <label for="cli-phone">Telefone Fixo *</label>
-            <input type="text" id="cli-phone" required placeholder="(11) 5555-5555" value="${cli ? cli.phone : ''}">
+            <label for="cli-whatsapp">WhatsApp (Celular) *</label>
+            <input type="text" id="cli-whatsapp" required placeholder="(11) 99999-9999" value="${cli ? (cli.whatsapp || '') : ''}">
           </div>
           <div class="form-group">
-            <label for="cli-whatsapp">WhatsApp (Celular)</label>
-            <input type="text" id="cli-whatsapp" placeholder="(11) 99999-9999" value="${cli ? cli.whatsapp : ''}">
+            <label for="cli-phone">Telefone Fixo</label>
+            <input type="text" id="cli-phone" placeholder="(11) 5555-5555" value="${cli ? (cli.phone || '') : ''}">
           </div>
           <div class="form-group">
             <label for="cli-email">E-mail corporativo *</label>
-            <input type="email" id="cli-email" required placeholder="email@cliente.com" value="${cli ? cli.email : ''}">
+            <input type="email" id="cli-email" required placeholder="email@cliente.com" value="${cli ? (cli.email || '') : ''}">
           </div>
         </div>
 
@@ -191,11 +191,14 @@ window.views.clients = {
     document.getElementById('client-form').addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      const whatsappVal = document.getElementById('cli-whatsapp').value;
+      const phoneVal = document.getElementById('cli-phone').value || whatsappVal;
+
       const payload = {
         name: document.getElementById('cli-name').value,
         document: document.getElementById('cli-doc').value || null,
-        phone: document.getElementById('cli-phone').value,
-        whatsapp: document.getElementById('cli-whatsapp').value || document.getElementById('cli-phone').value,
+        phone: phoneVal,
+        whatsapp: whatsappVal,
         email: document.getElementById('cli-email').value,
         address: document.getElementById('cli-address').value || null,
         birthday: document.getElementById('cli-birthday').value || null,
