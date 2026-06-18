@@ -22,6 +22,21 @@ window.app = {
       this.switchAuthForm('login-form');
     });
 
+    // Password visibility toggle
+    const togglePasswordBtn = document.getElementById('btn-toggle-password');
+    if (togglePasswordBtn) {
+      togglePasswordBtn.addEventListener('click', () => {
+        const passwordInput = document.getElementById('login-password');
+        if (passwordInput.type === 'password') {
+          passwordInput.type = 'text';
+          togglePasswordBtn.textContent = '🙈';
+        } else {
+          passwordInput.type = 'password';
+          togglePasswordBtn.textContent = '👁️';
+        }
+      });
+    }
+
     // Form Submissions
     document.getElementById('login-form').addEventListener('submit', (e) => this.handleLogin(e));
     document.getElementById('recovery-form').addEventListener('submit', (e) => this.handleRecovery(e));
