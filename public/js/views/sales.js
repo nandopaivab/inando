@@ -536,7 +536,7 @@ window.views.sales = {
 
     renderList(stdProducts, stdContainer, "Nenhum aparelho padrão.");
     renderList(recProducts, recContainer, "Nenhum recondicionado.");
-  }
+  },
 
   addCatalogItemToCart(id) {
     const product = this.availableProducts.find(p => Number(p.id) === Number(id));
