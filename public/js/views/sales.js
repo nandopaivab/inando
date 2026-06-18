@@ -319,12 +319,15 @@ window.views.sales = {
         try {
           // reload clients list
           this.clients = await window.api.clients.list();
-          clientSelect.innerHTML = `<option value="">Consumidor Final (Sem cadastro)</option>` + 
-            this.clients.map(c => `<option value="${c.id}">${c.name} (${c.document || 'Sem doc'})</option>`).join('');
-          
-          // Auto-select the newly created client
-          if (newClient && newClient.id) {
-            clientSelect.value = newClient.id;
+          const selectEl = document.getElementById('pos-client-select');
+          if (selectEl) {
+            selectEl.innerHTML = `<option value="">Consumidor Final (Sem cadastro)</option>` + 
+              this.clients.map(c => `<option value="${c.id}">${c.name} (${c.document || 'Sem doc'})</option>`).join('');
+            
+            // Auto-select the newly created client
+            if (newClient && newClient.id) {
+              selectEl.value = newClient.id;
+            }
           }
         } catch (e) {
           window.app.showToast('Erro ao atualizar lista de clientes', 'danger');
