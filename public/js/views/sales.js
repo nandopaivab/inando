@@ -40,7 +40,7 @@ window.views.sales = {
         <!-- Catalog & Cart -->
         <div class="pos-left" style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; height: 100%; overflow: hidden;">
           <!-- Catalog Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow: hidden;">
             <div class="pos-search-box" style="padding: 10px; display: flex; flex-direction: column; gap: 6px;">
               <h4 style="font-weight: 700; margin: 0; font-size: 13px; color: var(--text-primary);">Catálogo de Aparelhos</h4>
               <div style="position: relative; display: flex; align-items: center;">
@@ -55,7 +55,7 @@ window.views.sales = {
           </div>
 
           <!-- Cart Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow: hidden;">
             <div class="pos-search-box" style="padding: 10px;">
               <h4 style="font-weight: 700; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">Leitor Código de Barras / IMEI</h4>
               <div class="barcode-simulator" style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
@@ -433,7 +433,7 @@ window.views.sales = {
               IMEI/Série: ${p.imei_1 || p.serial_number || 'N/A'}
             </p>
             <span style="font-size: 11px; font-weight: 700; color: var(--primary); margin-top: 2px;">
-              R$ ${p.selling_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ ${(p.selling_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
           <div class="catalog-item-action">
