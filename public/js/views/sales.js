@@ -37,27 +37,44 @@ window.views.sales = {
     
     viewport.innerHTML = `
       <div class="pos-layout">
-        <!-- Cart & Scanner -->
-        <div class="pos-left">
-          <div class="pos-search-box">
-            <h4 style="font-weight: 700; margin-bottom: 8px;">Scanner ou Pesquisa de Aparelhos</h4>
-            <div class="barcode-simulator">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top: 10px; color: var(--text-secondary);"><path d="M3 5v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path><path d="M7 9h10M7 12h10M7 15h10"></path></svg>
-              <input type="text" id="pos-scan-input" placeholder="Simular leitor: Digite IMEI, Serial ou código de barras e tecle Enter...">
+        <!-- Catalog & Cart -->
+        <div class="pos-left" style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; height: 100%; overflow: hidden;">
+          <!-- Catalog Column -->
+          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+            <div class="pos-search-box" style="padding: 10px; display: flex; flex-direction: column; gap: 6px;">
+              <h4 style="font-weight: 700; margin: 0; font-size: 13px; color: var(--text-primary);">Catálogo de Aparelhos</h4>
+              <div style="position: relative; display: flex; align-items: center;">
+                <span style="position: absolute; left: 8px; color: var(--text-secondary); font-size: 12px;">🔍</span>
+                <input type="text" id="catalog-search-input" placeholder="Buscar modelo, IMEI, cor..." style="width: 100%; padding: 6px 8px 6px 26px; font-size: 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+              </div>
+            </div>
+            
+            <div id="catalog-products-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+              <!-- Catalog items loaded dynamically -->
             </div>
           </div>
 
-          <!-- Cart Header with Clear Cart button -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 8px;">
-            <h4 style="font-weight: 700; margin: 0; font-size: 14px; color: var(--text-primary);">Aparelhos no Carrinho</h4>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-cart" style="display: flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background: transparent; cursor: pointer;">
-              🗑️ Limpar Carrinho
-            </button>
-          </div>
+          <!-- Cart Column -->
+          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+            <div class="pos-search-box" style="padding: 10px;">
+              <h4 style="font-weight: 700; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">Leitor Código de Barras / IMEI</h4>
+              <div class="barcode-simulator" style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="pos-scan-input" placeholder="Digite IMEI/Série e tecle Enter..." style="width: 100%; padding: 6px 8px; font-size: 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+              </div>
+            </div>
 
-          <!-- Cart list -->
-          <div class="pos-cart-list" id="pos-cart-items">
-            <p class="empty-state">Carrinho vazio. Escaneie ou selecione um produto para iniciar.</p>
+            <!-- Cart Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <h4 style="font-weight: 700; margin: 0; font-size: 13px; color: var(--text-primary);">Aparelhos no Carrinho</h4>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-cart" style="display: flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background: transparent; cursor: pointer;">
+                🗑️ Limpar
+              </button>
+            </div>
+
+            <!-- Cart list -->
+            <div class="pos-cart-list" id="pos-cart-items" style="flex: 1; overflow-y: auto; background: var(--bg-tertiary);">
+              <p class="empty-state" style="font-size: 12px;">Carrinho vazio. Selecione aparelhos no catálogo ou use o scanner.</p>
+            </div>
           </div>
         </div>
 
@@ -222,6 +239,7 @@ window.views.sales = {
       clientSelect.innerHTML = `<option value="">Consumidor Final (Sem cadastro)</option>` + 
         this.clients.map(c => `<option value="${c.id}">${c.name} (${c.document || 'Sem doc'})</option>`).join('');
 
+      this.renderCatalog();
     } catch (e) {
       window.app.showToast('Erro ao carregar dados do PDV', 'danger');
     }
@@ -269,6 +287,12 @@ window.views.sales = {
     // Discount watcher
     const discInput = document.getElementById('pos-discount');
     discInput.addEventListener('input', () => this.updateTotals());
+
+    // Catalog search input watcher
+    const catalogSearchInput = document.getElementById('catalog-search-input');
+    if (catalogSearchInput) {
+      catalogSearchInput.addEventListener('input', () => this.renderCatalog());
+    }
 
     // Trade-in watchers
     const tradeInToggle = document.getElementById('pos-trade-in-toggle');
@@ -330,12 +354,14 @@ window.views.sales = {
     }
     this.cart.push(product);
     this.renderCart();
+    this.renderCatalog();
     this.updateTotals();
   },
 
   removeFromCart(id) {
     this.cart = this.cart.filter(item => Number(item.id) !== Number(id));
     this.renderCart();
+    this.renderCatalog();
     this.updateTotals();
   },
 
@@ -347,16 +373,102 @@ window.views.sales = {
     if (confirm('Deseja realmente limpar todos os itens do carrinho?')) {
       this.cart = [];
       this.renderCart();
+      this.renderCatalog();
       this.updateTotals();
       document.getElementById('pos-discount').value = '0.00';
       window.app.showToast('Carrinho limpo com sucesso!', 'success');
     }
   },
 
+  renderCatalog() {
+    const container = document.getElementById('catalog-products-list');
+    if (!container) return;
+
+    const query = (document.getElementById('catalog-search-input')?.value || '').toLowerCase().trim();
+
+    // Filter available products
+    const filtered = this.availableProducts.filter(p => {
+      const brand = (p.brand || '').toLowerCase();
+      const model = (p.model || '').toLowerCase();
+      const color = (p.color || '').toLowerCase();
+      const capacity = (p.capacity || '').toLowerCase();
+      const imei1 = (p.imei_1 || '').toLowerCase();
+      const imei2 = (p.imei_2 || '').toLowerCase();
+      const serial = (p.serial_number || '').toLowerCase();
+      
+      return brand.includes(query) ||
+             model.includes(query) ||
+             color.includes(query) ||
+             capacity.includes(query) ||
+             imei1.includes(query) ||
+             imei2.includes(query) ||
+             serial.includes(query);
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<p class="empty-state" style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--text-muted);">Nenhum aparelho encontrado.</p>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(p => {
+      const inCart = this.cart.some(item => Number(item.id) === Number(p.id));
+      
+      return `
+        <div class="catalog-item" style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius-sm);
+          padding: 8px 10px;
+          transition: var(--transition-fast);
+        ">
+          <div class="catalog-item-info" style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+            <h4 style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0;">${p.brand} ${p.model}</h4>
+            <p style="font-size: 10px; color: var(--text-secondary); margin: 0;">
+              ${p.color} | ${p.capacity}
+            </p>
+            <p style="font-size: 9px; color: var(--text-muted); margin: 0;">
+              IMEI/Série: ${p.imei_1 || p.serial_number || 'N/A'}
+            </p>
+            <span style="font-size: 11px; font-weight: 700; color: var(--primary); margin-top: 2px;">
+              R$ ${p.selling_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div class="catalog-item-action">
+            ${inCart ? `
+              <button class="btn btn-secondary btn-sm" disabled style="
+                font-size: 10px;
+                padding: 4px 8px;
+                background: rgba(16, 185, 129, 0.1);
+                color: var(--success);
+                border-color: rgba(16, 185, 129, 0.2);
+                cursor: not-allowed;
+              ">✓ No Carrinho</button>
+            ` : `
+              <button class="btn btn-primary btn-sm" onclick="window.views.sales.addCatalogItemToCart(${p.id})" style="
+                font-size: 10px;
+                padding: 4px 8px;
+              ">➕ Adicionar</button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  addCatalogItemToCart(id) {
+    const product = this.availableProducts.find(p => Number(p.id) === Number(id));
+    if (product) {
+      this.addToCart(product);
+    }
+  },
+
   renderCart() {
     const container = document.getElementById('pos-cart-items');
     if (this.cart.length === 0) {
-      container.innerHTML = `<p class="empty-state">Carrinho vazio. Escaneie ou selecione um produto para iniciar.</p>`;
+      container.innerHTML = `<p class="empty-state" style="font-size: 12px;">Carrinho vazio. Selecione aparelhos no catálogo ou use o scanner.</p>`;
       return;
     }
 
@@ -686,6 +798,10 @@ window.views.sales = {
 
       this.updateTotals();
       document.getElementById('pos-discount').value = '0.00';
+
+      // Reload available products
+      this.availableProducts = await window.api.products.list({ status: 'disponivel' });
+      this.renderCatalog();
 
       // Open Thermal Receipt modal
       this.showReceiptModal(res.sale_id);
